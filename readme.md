@@ -60,7 +60,7 @@ To install this repository, follow these steps:
 
 ## Usage
 
-```
+```bash
 Usage: swissgit [-h | --help] [-s | --status] [-b | --branches] [-c | --clean [-a] [-b] [folder]]
 [-p | --pullrequest [-a] <branchname> <commit_message> [PR_body]]
 
