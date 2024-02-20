@@ -109,7 +109,7 @@ Once it's filed:
 - A team member will try to reproduce the issue with your provided steps. If there are no reproduction steps or no obvious way to reproduce the issue, the team will ask you for those steps and mark the issue as `needs-repro`. Bugs with the `needs-repro` tag will not be addressed until they are reproduced.
 - If the team is able to reproduce the issue, it will be marked `needs-fix`, as well as possibly other tags (such as `critical`), and the issue will be left to be [implemented by someone](#your-first-code-contribution).
 
-_For guidance on submitting a bug report, please refer to our [bug report template](.github/ISSUE_TEMPLATE/bug_report.md)._
+_For guidance on submitting a bug report, please refer to our [bug report template](ISSUE_TEMPLATE/bug_report.md)._
 
 ### Suggesting Enhancements
 
@@ -136,7 +136,7 @@ Enhancement suggestions are tracked as [GitHub issues](https://github.com/cheezi
 - You may want to **include screenshots and animated GIFs** which help you demonstrate the steps or point out the part which the suggestion is related to. You can use [this tool](https://www.cockos.com/licecap/) to record GIFs on macOS and Windows, and [this tool](https://github.com/colinkeenan/silentcast) or [this tool](https://github.com/GNOME/byzanz) on Linux. <!-- this should only be included if the project has a GUI -->
 - **Explain why this enhancement would be useful** to most Swiss Git users. You may also want to point out the other projects that solved it better and which could serve as inspiration.
 
-_For guidance on submitting a Enhancement Suggestion, please refer to our [Feature request template](.github/ISSUE_TEMPLATE/feature_request.md)._
+_For guidance on submitting a Enhancement Suggestion, please refer to our [Feature request template](ISSUE_TEMPLATE/feature_request.md)._
 
 <!-- omit in toc -->
 
