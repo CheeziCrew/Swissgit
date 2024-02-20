@@ -169,12 +169,15 @@ This project is licensed under the [MIT License](LICENSE). You can find the full
 
 ## Acknowledgements
 
-Theo the cat for moral support.
+- **Theo the Cat**: for moral support
 
 Contribute in any way, shape or form and your name might end up here.
 
 ## Contact Information
 
+
 ## FAQs
 
-The answer to all your questions are maybe.
+**Q: Are all my questions answered here?**
+
+A: Maybe. But feel free to ask anyway! We're here to help.
