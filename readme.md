@@ -162,15 +162,14 @@ This Bash script automates the process of creating pull requests in Git reposito
 
 ## Contributing
 
-Explain how users can contribute to the project.
+Feel free to create a pull request if you have suggestions on changes. Or create an issue if you find something that is behaving wierdly, have a question or suggestion.
 
 ## License
 
-Specify the project's license here.
 
 ## Acknowledgements
 
-Thank contributors, libraries, or other resources here.
+Contribute and your name might end up here.
 
 ## Contact Information
 
