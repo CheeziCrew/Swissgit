@@ -165,14 +165,16 @@ This Bash script automates the process of creating pull requests in Git reposito
 Feel free to create a pull request if you have suggestions on changes. Or create an issue if you find something that is behaving wierdly, have a question or suggestion.
 
 ## License
-
+This project is licensed under the [MIT License](LICENSE). You can find the full text of the license in the [LICENSE](LICENSE) file.
 
 ## Acknowledgements
 
-Contribute and your name might end up here.
+Theo the cat for moral support.
+
+Contribute in any way, shape or form and your name might end up here.
 
 ## Contact Information
 
 ## FAQs
 
-Include frequently asked questions here.
+The answer to all your questions are maybe.
