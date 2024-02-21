@@ -1,6 +1,6 @@
 #!/bin/bash
 
-pullrequest() {
+_pullrequest() {
     local all_repos_flag=false
 
     # Check for flags
@@ -22,12 +22,6 @@ pullrequest() {
             ;;
         esac
     done
-
-    # Check if branchname and commit message are provided
-    if [ $# -lt 2 ]; then
-        echo "Usage: pullrequest [-a] <branchname> <commit_message> [PR_body]"
-        return 1
-    fi
 
     local branchname="$1"
     local commit_message="$2"
@@ -51,20 +45,14 @@ pullrequest() {
             return 1
         fi
 
-        # Check if the branch already exists
-        if git rev-parse --verify "$branchname" >/dev/null 2>&1; then
+        # Check if the branch already exists or create a new branch
+        git rev-parse --verify "$branchname" >/dev/null 2>&1 && {
             echo "Branch '$branchname' already exists. Aborting."
             return 1
-        fi
-
-        # Checkout a new branch
-        git checkout -b "$branchname" >/dev/null 2>&1
-
-        # Check if the branch creation was successful
-        if [ $? -ne 0 ]; then
+        } || git checkout -b "$branchname" >/dev/null 2>&1 || {
             echo "Failed to create branch '$branchname'. Aborting."
             return 1
-        fi
+        }
 
         # Add all changes
         git add . >/dev/null 2>&1
@@ -78,14 +66,10 @@ pullrequest() {
         # Check if the push was successful
         if [ $? -ne 0 ]; then
             echo "Failed to push changes to the remote repository. Trying to pull latest changes..."
-            git pull origin "$branchname" # Attempt to pull latest changes from remote
-            if [ $? -eq 0 ]; then
-                echo "Successfully pulled latest changes. Pushing again"
-                git push origin "$branchname"
-            else
+            git pull origin "$branchname" && git push origin "$branchname" || {
                 echo "Failed to pull latest changes. Please resolve conflicts manually."
-            fi
-            return 1
+                return 1
+            }
         fi
 
         # Create PR using GitHub CLI and capture the output

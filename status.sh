@@ -1,6 +1,6 @@
 #!/bin/bash
 
-status() {
+_status() {
     local dirs=($(find . -maxdepth 1 -mindepth 1 -type d))
 
     # Define terminal color codes

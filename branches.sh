@@ -7,7 +7,7 @@ RED=$(tput setaf 1)
 YELLOW=$(tput setaf 3)
 NC=$(tput sgr0) # No Color
 
-branches() {
+_branches() {
     local dirs=($(find . -maxdepth 1 -mindepth 1 -type d))
 
     for dir in "${dirs[@]}"; do
