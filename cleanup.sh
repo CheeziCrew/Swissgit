@@ -7,7 +7,7 @@ RED=$(tput setaf 1)
 BLUE=$(tput setaf 4)
 NC=$(tput sgr0) # No Color
 
-function cleanup() {
+_cleanup() {
     local drop_changes=0
     local target_dir="."
     local all_repos_flag=false
