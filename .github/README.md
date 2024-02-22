@@ -69,7 +69,7 @@ Commands:
   cleanup [-a] [-d] [folder]
                         Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
   clone <org> <team> <github_token> [target_dir]
-                        Clone a team's repositories with SSH. Requires a personal access token.
+                        Clone a teams repositories with SSH. Requires a personal access token.
   commit <commit_message> [branchname]
                         Create and push a commit on the current branch or a new one. Without a PR
   pullrequest [-a] <branchname> <commit_message> [PR_body]
