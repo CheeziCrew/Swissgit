@@ -8,31 +8,40 @@ BLUE=$(tput setaf 4)
 NC=$(tput sgr0) # No Color
 
 _cleanup() {
+    # Handle -h option separately
+    if [[ "$1" == "-h" ]]; then
+        echo "Usage: swissgit cleanup [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]"
+        return 0
+    fi
+
     local drop_changes=0
     local target_dir="."
     local all_repos_flag=false
 
-    # Check for flags and optional folder path
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        -d)
+    while getopts ":daf:" opt; do
+        case ${opt} in
+        d)
             drop_changes=1
-            shift
             ;;
-        -a)
+        a)
             all_repos_flag=true
-            shift
             ;;
-        *)
-            if [ "$1" != "" ]; then
-                target_dir="$1"
-                shift
-            else
-                shift
-            fi
+        f)
+            target_dir="$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+            return 1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+            return 1
             ;;
         esac
     done
+    shift $((OPTIND - 1))
 
     if [[ $all_repos_flag == true ]]; then
         find_options=()

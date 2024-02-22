@@ -18,70 +18,57 @@ source "$SCRIPT_DIR/commit.sh"
 
 _usage() {
     cat <<-EOF
-Usage: swissgit [-h | --help] [-s | --status] [-b | --branches] [-c | --clean [-a] [-d] [folder]]
-                [-l | --clone <org> <team> <github_token> [target_dir]]
-                [-o | --commit <commit_message> [branchname]]
-                [-p | --pullrequest [-a] <branchname> <commit_message> [PR_body]]
+Usage: swissgit COMMAND [OPTIONS]
 
-Options:
-  -h, --help             Show this help message and exit
-  -s, --status           Checks recursively the status of all repositories
-  -b, --branches         Checks recursively the branch status of all repositories
-  -c, --clean [-a] [-d] [folder]
-                         Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
-  -l, --clone <org> <team> <github_token> [target_dir]
-                         Clone a team's repositories with SSH.
-                         Requires a personal access token.
-  -o, --commit <commit_message> [branchname] 
-                         Create and push a commit on the current branch or a new one. Without a PR       
-  -p, --pullrequest [-a] <branchname> <commit_message> [PR_body]
-                         Create a pull request. Use -a for recursively doing for all subdirectories.
-                         Creates a branch, commits all your changes, and creates a pull request.
+Commands:
+  status                Recursively checks the status of all repositories
+  branches              Recursively checks the branch status of all repositories
+  cleanup [-a] [-d] [folder]
+                        Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
+  clone <org> <team> <github_token> [target_dir]
+                        Clone a team's repositories with SSH. Requires a personal access token.
+  commit <commit_message> [branchname] 
+                        Create and push a commit on the current branch or a new one. Without a PR       
+  pullrequest [-a] <branchname> <commit_message> [PR_body]
+                        Create a pull request. Use -a for recursively doing for all subdirectories. Creates a branch, commits all your changes, and creates a pull request.
+  help                  Show this help message and exit
 EOF
 }
 
 # Dispatch commands based on user input
 swissgit() {
-    case "$1" in
-    -s | --status)
+    if [ "$#" -eq 0 ]; then
+        echo "Error: No command provided. Use 'swissgit help' for usage information."
+        return 1
+    fi
+
+    local command="$1"
+    shift
+
+    case "$command" in
+    status)
         _status
         ;;
-    -b | --branches)
+    branches)
         _branches
         ;;
-
-    -c | --cleanup)
-        _cleanup "$2" "$3" "$4"
+    cleanup)
+        _cleanup "$@"
         ;;
-    -o | --commit)
-        if [ "$#" -lt 2 ]; then
-            echo "Error: Missing parameters for clone"
-            echo "Usage: swissgit [-c | --commit] <commit_message> [branchname]"
-            return 1
-        fi
-        _commit "$2" "$3" "$4"
+    clone)
+        _clone "$@"
         ;;
-    -l | --clone)
-        if [ "$#" -lt 4 ]; then
-            echo "Error: Missing parameters for clone"
-            echo "Usage: swissgit [-l | --clone] <org> <team> <github_token> [target_dir]"
-            return 1
-        fi
-        _clone "$2" "$3" "$4" "$5"
+    commit)
+        _commit "$@"
         ;;
-    -p | --pullrequest)
-        if [ "$#" -lt 3 ]; then
-            echo "Error: Missing parameters for pull request"
-            echo "Usage: swissgit [-p | --pullrequest] [-a] <branchname> <commit_message> [PR_body]"
-            return 1
-        fi
-        _pullrequest "$2" "$3" "$4" "$5"
+    pullrequest)
+        _pullrequest "$@"
         ;;
-    -h | --help)
+    help)
         _usage
         ;;
     *)
-        _usage
+        echo "Invalid command. Use 'swissgit help' for usage information."
         ;;
     esac
 }

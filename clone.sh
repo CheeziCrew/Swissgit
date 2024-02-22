@@ -1,14 +1,51 @@
 #!/bin/bash
 
 _clone() {
+    # Handle -h option separately
+    if [[ "$1" == "-h" ]]; then
+        echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+        return 0
+    fi
 
-    organization=$1
-    team=$2
-    token=$3
-    target_dir=$4
+    organization=""
+    team=""
+    token=""
+    target_dir="."
 
-    # Set default clone directory if not provided
-    target_dir="${target_dir:-SWISSGIT_DEFAULT_CLONE}"
+    while getopts ":o:t:k:d:" opt; do
+        case ${opt} in
+        o)
+            organization="$OPTARG"
+            ;;
+        t)
+            team="$OPTARG"
+            ;;
+        k)
+            token="$OPTARG"
+            ;;
+        d)
+            target_dir="$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+            return 1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+            return 1
+            ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+
+    # Check if required options are provided
+    if [[ -z $organization || -z $team || -z $token ]]; then
+        echo "Error: Required options are missing. Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]" >&2
+        return 1
+    fi
+
     # Make clone dir if not exists
     mkdir -p "$target_dir" && cd "$target_dir"
 
