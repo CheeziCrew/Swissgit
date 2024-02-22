@@ -2,8 +2,45 @@
 
 _commit() {
 
-    local commit_message="$1"
-    local branchname="$2"
+    # Handle -h option separately
+    if [[ "$1" == "-h" ]]; then
+        echo "Usage: swissgit [-h] -c <commit_message> -b <branchname>"
+        return 0
+    fi
+
+    # Initialize variables
+    local commit_message=""
+    local branchname=""
+
+    # Get options
+    while getopts ":c:b:" opt; do
+        case ${opt} in
+        c)
+            commit_message="$OPTARG"
+            ;;
+        b)
+            branchname="$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo "Usage: swissgit [-h] -c <commit_message> -b <branchname>"
+            return 1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            echo "Usage: swissgit [-h] -c <commit_message> -b <branchname>"
+            return 1
+            ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+
+    # Check if both commit_message and branchname are provided
+    if [[ -z $commit_message || -z $branchname ]]; then
+        echo "Error: Both commit message and branch name are required." >&2
+        echo "Usage: swissgit [-h] -c <commit_message> -b <branchname>"
+        return 1
+    fi
 
     if [[ -z $(git status --porcelain) ]]; then
         echo "No changes to commit. Aborting."

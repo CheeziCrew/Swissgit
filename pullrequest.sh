@@ -1,31 +1,50 @@
 #!/bin/bash
 
 _pullrequest() {
-    local all_repos_flag=false
+    # Handle -h option separately
+    if [[ "$1" == "-h" ]]; then
+        echo "Usage: swissgit pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>]"
+        return 0
+    fi
 
-    # Check for flags
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        -a)
+    local all_repos_flag=false
+    local pr_body=""
+
+    while getopts ":ab:c:p:" opt; do
+        case ${opt} in
+        a)
             all_repos_flag=true
-            shift
             ;;
-        *)
-            # Skip this case if it starts with a dash
-            if [[ "$1" == -* ]]; then
-                echo "Unknown flag: $1"
-                return 1
-            else
-                # If it's not a flag, it's a parameter
-                break
-            fi
+        b)
+            branchname="$OPTARG"
+            ;;
+        c)
+            commit_message="$OPTARG"
+            ;;
+        p)
+            pr_body="$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            echo "Usage: swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]"
+            return 1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            echo "Usage: swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]"
+            return 1
             ;;
         esac
     done
 
-    local branchname="$1"
-    local commit_message="$2"
-    local pr_body="$3"
+    # Check if branchname and commit_message are provided
+    if [[ -z $branchname || -z $commit_message ]]; then
+        echo "Error: Branchname and commit message are required." >&2
+        echo "Usage: swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]"
+        return 1
+    fi
+
+    shift $((OPTIND - 1))
 
     if [[ $all_repos_flag == true ]]; then
         for dir in */; do

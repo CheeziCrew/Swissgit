@@ -61,18 +61,20 @@ To install this repository, follow these steps:
 ## Usage
 
 ```bash
-Usage: swissgit [-h | --help] [-s | --status] [-b | --branches] [-c | --clean [-a] [-b] [folder]]
-[-p | --pullrequest [-a] <branchname> <commit_message> [PR_body]]
+Usage: swissgit COMMAND [OPTIONS]
 
-Options:
--h,     --help      Show this help message and exit
--s,     --status    Checks recursively the status of all repositories
--b,     --branches  Checks recursively the branch status of all repositories
--c,     --clean [-a] [-d] [folder]
-                    Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
--p,     --pullrequest [-a] <branchname> <commit_message> [PR_body]
-                    Create a pull request. Use -a for recursively doing for all subdirectories.
-                    Creates a branch, commits all your changes and creates a pull pullrequest.
+Commands:
+  status                Recursively checks the status of all repositories
+  branches              Recursively checks the branch status of all repositories
+  cleanup [-a] [-d] [folder]
+                        Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
+  clone <org> <team> <github_token> [target_dir]
+                        Clone a team's repositories with SSH. Requires a personal access token.
+  commit <commit_message> [branchname]
+                        Create and push a commit on the current branch or a new one. Without a PR
+  pullrequest [-a] <branchname> <commit_message> [PR_body]
+                        Create a pull request. Use -a for recursively doing for all subdirectories. Creates a branch, commits all your changes, and creates a pull request.
+  help                  Show this help message and exit
 ```
 
 ## Features
@@ -84,19 +86,19 @@ Options:
 
 ## Documentation
 
-### Cleanup `-c | --cleanup [-a] [-d] [folder]`
+### Cleanup
 
 This bash script provides a streamlined way to manage multiple Git repositories within a specified directory. It checks for uncommitted changes, updates the main branch, prunes merged branches, and highlights potential issues like excessive local branches or unmerged changes.
 
 #### Usage
 
 ```bash
-swissgit -c [-d] [-a] [directory_path]
+swissgit cleanup [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
 ```
 
 - \`-d\`: Drop all changes including untracked files.
-- \`-a\`: Apply changes to all repositories within the directory (recursive).
-- \`directory_path\`: Specify the directory path where the repositories are located. (Default: current directory)
+- \`-a \`: Apply changes to all repositories within the directory (recursive).
+- \`-f <target_dir>\`: Specify the directory path where the repositories are located. (Default: current directory)
 
 #### Example Output
 
@@ -106,14 +108,14 @@ swissgit -c [-d] [-a] [directory_path]
 
 ##
 
-### Branches ` -b | --branches`
+### Branches
 
 This command offers insights into the branches within Git repositories located in the current directory. It provides details on local and remote branches, highlighting the main branch and identifying stale branches for cleanup.
 
 #### Usage
 
 ```bash
-swissgit -b
+swissgit branches
 ```
 
 #### Example Output
@@ -122,14 +124,14 @@ swissgit -b
 
 ##
 
-### Status `-s | --status`
+### Status
 
 This Bash script provides a concise overview of the status of Git repositories within the current directory. It displays information such as branch names, commits ahead/behind, and changes in a color-coded format.
 
 #### Usage
 
 ```bash
-swissgit -s
+swissgit status
 ```
 
 #### Example Output
@@ -141,20 +143,35 @@ swissgit -s
 
 ##
 
-### Pull Request `-p | --pullrequest`
+### Commit
 
-This Bash script automates the process of creating pull requests in Git repositories. It simplifies branching, committing, pushing changes, and creating pull requests, either for a single repository or across multiple repositories.
+This command wraps up the commands normally used for creating a commit and push it. It has the option to choose to commit to the current branch or providing a flag to create a new branch to commit to. This is useful for those times you don't want to create PR straight away or want to update a PR. This is currently not a batch command.
 
 #### Usage
 
 ```bash
-. swissgit -p [-a] <branchname> <commit_message> [PR_body]
+swissgit -c <commit_message> -b <branchname>"
+```
+
+- `-b <branchname>`: Name of the new branch.
+- `-c <commit_message>`: Commit message for the changes.
+
+##
+
+### Pull Request
+
+This command automates the process of creating pull requests in Git repositories. It simplifies branching, committing, pushing changes, and creating pull requests, either for a single repository or across multiple repositories.
+
+#### Usage
+
+```bash
+   swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
 ```
 
 - `-a`: Apply changes to all repositories within the current directory (optional).
-- `<branchname>`: Name of the new branch.
-- `<commit_message>`: Commit message for the changes.
-- `[PR_body]`: Pull request body (optional).
+- `-b <branchname>`: Name of the new branch.
+- `-c <commit_message>`: Commit message for the changes.
+- `[-p <pr_body>]`: Pull request body (optional).
 
 #### Example Output
 
@@ -165,6 +182,7 @@ This Bash script automates the process of creating pull requests in Git reposito
 Feel free to create a pull request if you have suggestions on changes. Or create an issue if you find something that is behaving wierdly, have a question or suggestion.
 
 ## License
+
 This project is licensed under the [MIT License](LICENSE). You can find the full text of the license in the [LICENSE](LICENSE) file.
 
 ## Acknowledgements
@@ -175,8 +193,11 @@ Contribute in any way, shape or form and your name might end up here.
 
 ## Contact Information
 
-
 ## FAQs
+
+**Q: Where the duck is the .exe?**
+
+A: Sorry we are developers here. We don't do .exes.
 
 **Q: Are all my questions answered here?**
 
