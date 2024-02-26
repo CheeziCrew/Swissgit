@@ -21,15 +21,15 @@ _usage() {
 Usage: swissgit COMMAND [OPTIONS]
 
 Commands:
-  status                Recursively checks the status of all repositories
-  branches              Recursively checks the branch status of all repositories
-  cleanup [-a] [-d] [folder]
+  status                Recursively checks the status of repositories. If current dir is a git repo, it will only check that repo.
+  branches              Recursively checks the branch status of repositories. If current dir is a git repo, it will only check that repo.
+  cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
                         Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
-  clone <org> <team> <github_token> [target_dir]
+  clone [-h] -o <organization> -t <team> -k <token> [-d <target_dir>]
                         Clone a team's repositories with SSH. Requires a personal access token.
-  commit <commit_message> [branchname] 
-                        Create and push a commit on the current branch or a new one. Without a PR       
-  pullrequest [-a] <branchname> <commit_message> [PR_body]
+  commit [-h] [-a] -c <commit_message> [-b <branchname>] 
+                        Create and push a commit on the current branch or a new one. Without a PR. Use -a for recursively doing for all subdirectories.      
+  pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
                         Create a pull request. Use -a for recursively doing for all subdirectories. Creates a branch, commits all your changes, and creates a pull request.
   help                  Show this help message and exit
 EOF

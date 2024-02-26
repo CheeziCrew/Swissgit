@@ -3,7 +3,13 @@
 _clone() {
     # Handle -h option separately
     if [[ "$1" == "-h" ]]; then
-        echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+        echo "Usage: swissgit clone [options]"
+        echo "Options:"
+        echo "  -h                      Show this help message and exit."
+        echo "  -o <organization>       Specify the GitHub organization."
+        echo "  -t <team>               Specify the team within the organization."
+        echo "  -k <token>              Specify the GitHub personal access token."
+        echo "  -d <target_dir>         Specify the target directory for cloning. Defaults to the current directory."
         return 0
     fi
 

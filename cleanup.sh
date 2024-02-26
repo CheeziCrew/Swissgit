@@ -10,7 +10,12 @@ NC=$(tput sgr0) # No Color
 _cleanup() {
     # Handle -h option separately
     if [[ "$1" == "-h" ]]; then
-        echo "Usage: swissgit cleanup [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]"
+        echo "Usage: swissgit cleanup [options]"
+        echo "Options:"
+        echo "  -h                      Show this help message and exit."
+        echo "  -d                      Drop all changes in the repositories. This will reset the repository to the last commit and remove untracked files."
+        echo "  -a                      Apply cleanup to all repositories in the target directory, including subdirectories."
+        echo "  -f <target_dir>         Specify the target directory where the repositories are located. Defaults to the current directory."
         return 0
     fi
 
@@ -31,12 +36,12 @@ _cleanup() {
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
-            echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+            echo "Usage: swissgit cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]"
             return 1
             ;;
         :)
             echo "Option -$OPTARG requires an argument." >&2
-            echo "Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]"
+            echo "Usage: swissgit cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]"
             return 1
             ;;
         esac
