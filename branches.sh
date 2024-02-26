@@ -8,7 +8,12 @@ YELLOW=$(tput setaf 3)
 NC=$(tput sgr0) # No Color
 
 _branches() {
-    local dirs=($(find . -maxdepth 1 -mindepth 1 -type d))
+    # Check if the current directory is a git repository
+    if [ -d ".git" ]; then
+        dirs=(".")
+    else
+        local dirs=($(find . -maxdepth 1 -mindepth 1 -type d))
+    fi
 
     for dir in "${dirs[@]}"; do
         if [[ -d "$dir/.git" ]]; then

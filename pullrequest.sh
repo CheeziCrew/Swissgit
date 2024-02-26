@@ -3,7 +3,7 @@
 _pullrequest() {
     # Handle -h option separately
     if [[ "$1" == "-h" ]]; then
-        echo "Usage: swissgit pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>]"
+        echo "Usage: swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]"
         return 0
     fi
 
