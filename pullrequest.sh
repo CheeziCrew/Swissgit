@@ -3,7 +3,13 @@
 _pullrequest() {
     # Handle -h option separately
     if [[ "$1" == "-h" ]]; then
-        echo "Usage: swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]"
+        echo "Usage: swissgit pullrequest [options]"
+        echo "Options:"
+        echo "  -h                      Show this help message and exit."
+        echo "  -a                      Apply the operation to all repositories in the current directory."
+        echo "  -b <branchname>         Specify the branch name for the pull request."
+        echo "  -c <commit_message>     Specify the commit message."
+        echo "  -p <pr_body>            Specify the body of the pull request."
         return 0
     fi
 
@@ -52,7 +58,7 @@ _pullrequest() {
                 dir="${dir%/}" # Remove trailing slash
                 (
                     cd "$dir" || return
-                    pullrequest "$branchname" "$commit_message" "$pr_body"
+                    _pullrequest "$branchname" "$commit_message" "$pr_body"
                 )
             fi
         done

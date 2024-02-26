@@ -60,21 +60,20 @@ To install this repository, follow these steps:
 
 ## Usage
 
-```bash
+```
 Usage: swissgit COMMAND [OPTIONS]
 
 Commands:
-  branches              Recursively checks the branch status of all repositories
-  cleanup [-a] [-d] [folder]
+  status                Recursively checks the status of repositories. If current dir is a git repo, it will only check that repo.
+  branches              Recursively checks the branch status of repositories. If current dir is a git repo, it will only check that repo.
+  cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
                         Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
-  clone <org> <team> <github_token> [target_dir]
+  clone [-h] -o <organization> -t <team> -k <token> [-d <target_dir>]
                         Clone a teams repositories with SSH. Requires a personal access token.
-  commit <commit_message> [branchname]
+  commit [-h] -c <commit_message> [-b <branchname>]
                         Create and push a commit on the current branch or a new one. Without a PR
-  pullrequest [-a] <branchname> <commit_message> [PR_body]
+  pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
                         Create a pull request. Use -a for recursively doing for all subdirectories. Creates a branch, commits all your changes, and creates a pull request.
-  status                Recursively checks the status of all repositories
-
   help                  Show this help message and exit
 ```
 
@@ -110,12 +109,13 @@ This bash script provides a streamlined way to manage multiple Git repositories 
 #### Usage
 
 ```bash
-swissgit cleanup [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
+swissgit cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
 ```
 
-- \`-d\`: Drop all changes including untracked files.
-- \`-a \`: Apply changes to all repositories within the directory (recursive).
-- \`-f <target_dir>\`: Specify the directory path where the repositories are located. (Default: current directory)
+- `-h`: Show help message
+- `-d`: Drop all changes including untracked files.
+- `-a`: Apply changes to all repositories within the directory (recursive).
+- `-f <target_dir>`: Specify the directory path where the repositories are located. (Default: current directory)
 
 #### Example Output
 
@@ -132,9 +132,10 @@ This command wraps up the commands normally used for creating a commit and push 
 #### Usage
 
 ```bash
-swissgit -c <commit_message> -b <branchname>"
+swissgit [-h] -c <commit_message> -b <branchname>"
 ```
 
+- `-h`: Show help message
 - `-b <branchname>`: Name of the new branch.
 - `-c <commit_message>`: Commit message for the changes.
 
@@ -147,9 +148,10 @@ This command automates the process of creating pull requests in Git repositories
 #### Usage
 
 ```bash
-swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
+swissgit pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
 ```
 
+- `-h`: Show help message
 - `-a`: Apply changes to all repositories within the current directory (optional).
 - `-b <branchname>`: Name of the new branch.
 - `-c <commit_message>`: Commit message for the changes.
@@ -194,7 +196,7 @@ Contribute in any way, shape or form and your name might end up here.
 
 ## Contact Information
 
-For questions or concerns, contact [swissgittools@gmail.com](mailto:swissgittools@gmail.com) or create an issue on GitHub.
+For questions or concerns, contact [swissgittools@gmail.com](mailto:swissgittools@gmail.com) or create an issue here on GitHub.
 
 ## FAQs
 
