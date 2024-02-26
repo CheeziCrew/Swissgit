@@ -64,7 +64,6 @@ To install this repository, follow these steps:
 Usage: swissgit COMMAND [OPTIONS]
 
 Commands:
-  status                Recursively checks the status of all repositories
   branches              Recursively checks the branch status of all repositories
   cleanup [-a] [-d] [folder]
                         Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
@@ -74,6 +73,8 @@ Commands:
                         Create and push a commit on the current branch or a new one. Without a PR
   pullrequest [-a] <branchname> <commit_message> [PR_body]
                         Create a pull request. Use -a for recursively doing for all subdirectories. Creates a branch, commits all your changes, and creates a pull request.
+  status                Recursively checks the status of all repositories
+
   help                  Show this help message and exit
 ```
 
@@ -85,6 +86,22 @@ Commands:
 - Automates the process of creating pull requests in Git repositories.
 
 ## Documentation
+
+### Branches
+
+This command offers insights into the branches within Git repositories located in the current directory. It provides details on local and remote branches, highlighting the main branch and identifying stale branches for cleanup.
+
+#### Usage
+
+```bash
+swissgit branches
+```
+
+#### Example Output
+
+- \(Repo Name\): (\(L\)Local Branches/\(R\)Remote Branches): \(Main Branch\); \(Other Branches\); \(Stale Branches\)
+
+##
 
 ### Cleanup
 
@@ -105,41 +122,6 @@ swissgit cleanup [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
 - Green (✓): Repository is clean and up-to-date.
 - Yellow: Indicates potential issues such as uncommitted changes or excessive branches.
 - Red: Indicates errors encountered during processing.
-
-##
-
-### Branches
-
-This command offers insights into the branches within Git repositories located in the current directory. It provides details on local and remote branches, highlighting the main branch and identifying stale branches for cleanup.
-
-#### Usage
-
-```bash
-swissgit branches
-```
-
-#### Example Output
-
-- \(Repo Name\): (\(L\)Local Branches/\(R\)Remote Branches): \(Main Branch\); \(Other Branches\); \(Stale Branches\)
-
-##
-
-### Status
-
-This Bash script provides a concise overview of the status of Git repositories within the current directory. It displays information such as branch names, commits ahead/behind, and changes in a color-coded format.
-
-#### Usage
-
-```bash
-swissgit status
-```
-
-#### Example Output
-
-- Branch name: Green for 'main', Yellow for other branches.
-- Commits Ahead/Behind: Green for ahead, Red for behind.
-- Change Summary: Yellow for modified, Green for added, Red for deleted, Blue for untracked files.
-- ✓: Indicates no changes and not ahead/behind.
 
 ##
 
@@ -165,7 +147,7 @@ This command automates the process of creating pull requests in Git repositories
 #### Usage
 
 ```bash
-   swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
+swissgit pullrequest [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
 ```
 
 - `-a`: Apply changes to all repositories within the current directory (optional).
@@ -176,6 +158,25 @@ This command automates the process of creating pull requests in Git repositories
 #### Example Output
 
 - Pull request created: [PR_URL]
+
+##
+
+### Status
+
+This Bash script provides a concise overview of the status of Git repositories within the current directory. It displays information such as branch names, commits ahead/behind, and changes in a color-coded format.
+
+#### Usage
+
+```bash
+swissgit status
+```
+
+#### Example Output
+
+- Branch name: Green for 'main', Yellow for other branches.
+- Commits Ahead/Behind: Green for ahead, Red for behind.
+- Change Summary: Yellow for modified, Green for added, Red for deleted, Blue for untracked files.
+- ✓: Indicates no changes and not ahead/behind.
 
 ## Contributing
 
@@ -192,6 +193,8 @@ This project is licensed under the [MIT License](LICENSE). You can find the full
 Contribute in any way, shape or form and your name might end up here.
 
 ## Contact Information
+
+For questions or concerns, contact [swissgittools@gmail.com](mailto:swissgittools@gmail.com) or create an issue on GitHub.
 
 ## FAQs
 

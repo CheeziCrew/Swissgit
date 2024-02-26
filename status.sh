@@ -1,8 +1,12 @@
 #!/bin/bash
 
 _status() {
-    local dirs=($(find . -maxdepth 1 -mindepth 1 -type d))
-
+    # Check if the current directory is a git repository
+    if [ -d ".git" ]; then
+        dirs=(".")
+    else
+        local dirs=($(find . -maxdepth 1 -mindepth 1 -type d))
+    fi
     # Define terminal color codes
     GREEN=$(tput setaf 2)
     YELLOW=$(tput setaf 3)
@@ -37,7 +41,7 @@ _status() {
             fi
 
             # Print commits ahead/behind if available
-            if [[ -n $ahead && -n $behind && $ahead -ne 0 && $behind -ne 0 ]]; then
+            if [[ -n $ahead && $ahead -gt 0 ]] || [[ -n $behind && $behind -gt 0 ]]; then
                 echo -n "(${GREEN}${ahead}/${RED}${behind}) ${NC}"
             fi
 
