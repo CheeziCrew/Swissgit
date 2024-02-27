@@ -13,35 +13,41 @@ _cleanup() {
         echo "Usage: swissgit cleanup [options]"
         echo "Options:"
         echo "  -h                      Show this help message and exit."
-        echo "  -d                      Drop all changes in the repositories. This will reset the repository to the last commit and remove untracked files."
         echo "  -a                      Apply cleanup to all repositories in the target directory, including subdirectories."
+        echo "  -d                      Drop all changes in the repositories. This will reset the repository to the last commit and remove untracked files."
         echo "  -f <target_dir>         Specify the target directory where the repositories are located. Defaults to the current directory."
+        echo "  -s                      Stash local changes"
         return 0
     fi
 
     local drop_changes=0
+    local stash_changes=0
     local target_dir="."
     local all_repos_flag=false
 
-    while getopts ":daf:" opt; do
+    while getopts ":dasf:" opt; do
         case ${opt} in
-        d)
-            drop_changes=1
-            ;;
         a)
             all_repos_flag=true
             ;;
+        d)
+            drop_changes=1
+            ;;
+
         f)
             target_dir="$OPTARG"
             ;;
+        s)
+            stash_changes=1
+            ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
-            echo "Usage: swissgit cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]"
+            echo "Usage: swissgit cleanup [-h] [-d] [-a][-s] [-f <target_dir>] "
             return 1
             ;;
         :)
             echo "Option -$OPTARG requires an argument." >&2
-            echo "Usage: swissgit cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]"
+            echo "Usage: swissgit cleanup [-h] [-d] [-a][-s] [-f <target_dir>] "
             return 1
             ;;
         esac
@@ -59,6 +65,10 @@ _cleanup() {
         if [[ -d "$dir/.git" ]]; then
             (
                 cd "$dir"
+
+                if [[ $stash_changes -eq 1 ]]; then
+                    git stash >/dev/null 2>&1
+                fi
 
                 # Check if there are changes (including untracked files)
                 changes=""
@@ -87,6 +97,10 @@ _cleanup() {
                     git branch --merged main | grep -v '^\* main$' | xargs -n 1 git branch -d >/dev/null 2>&1
                 fi
                 branches=$(git branch | wc -l | awk '{$1=$1};1')
+
+                if [[ $stash_changes -eq 1 ]]; then
+                    git stash pop >/dev/null 2>&1
+                fi
 
                 # Output
                 if [[ -z $changes && $branches -eq 1 && $current_branch == "main" && $pruned_branches == 0 ]]; then

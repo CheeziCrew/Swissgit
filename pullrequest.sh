@@ -83,7 +83,7 @@ _pullrequest() {
         git add . >/dev/null 2>&1
 
         # Commit changes
-        git commit -m "$branchname": $commit_message" >/dev/null 2>&1
+        git commit -m "$branchname: $commit_message" >/dev/null 2>&1
 
         # Push changes
         git push origin "$branchname" >/dev/null 2>&1
