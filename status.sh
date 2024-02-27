@@ -1,6 +1,15 @@
 #!/bin/bash
 
 _status() {
+    # Handle -h option separately
+    if [[ "$1" == "-h" ]]; then
+        echo "Usage: swissgit status"
+        echo ""
+        echo "This command recursively checks the status of repositories."
+        echo "If the current directory is a git repository, it will only check that repo."
+        return 0
+    fi
+
     # Check if the current directory is a git repository
     if [ -d ".git" ]; then
         dirs=(".")
