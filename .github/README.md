@@ -61,19 +61,15 @@ To install this repository, follow these steps:
 ## Usage
 
 ```
-Usage: swissgit COMMAND [OPTIONS]
+Usage: swissgit COMMAND
 
 Commands:
   status                Recursively checks the status of repositories. If current dir is a git repo, it will only check that repo.
   branches              Recursively checks the branch status of repositories. If current dir is a git repo, it will only check that repo.
-  cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
-                        Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
-  clone [-h] -o <organization> -t <team> -k <token> [-d <target_dir>]
-                        Clone a teams repositories with SSH. Requires a personal access token.
-  commit [-h] -c <commit_message> [-b <branchname>]
-                        Create and push a commit on the current branch or a new one. Without a PR
-  pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
-                        Create a pull request. Use -a for recursively doing for all subdirectories. Creates a branch, commits all your changes, and creates a pull request.
+  cleanup               Clean up your repositories. Check out and update main, drop merged branches and drop no longer needed changes.
+  clone                 Clone a teams repositories with SSH. Requires a personal access token.
+  commit                Create and push a commit on the current branch or a new one. Without a PR
+  pullrequest           Create a pull request. Creates a branch, commits all your changes, and creates a pull request.
   help                  Show this help message and exit
 ```
 
