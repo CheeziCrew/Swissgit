@@ -87,11 +87,15 @@ _commit() {
             fi
         fi
 
+        if [[ -z $branchname ]]; then
+            branchname=$(git branch --show-current 2>/dev/null)
+        fi
+
         # Add all changes
         git add . >/dev/null 2>&1
 
         # Commit changes
-        git commit -m "$commit_message" >/dev/null 2>&1
+        git commit -m "$branchname: $commit_message" >/dev/null 2>&1
 
         if [[ $push == true ]]; then
             # Push changes
