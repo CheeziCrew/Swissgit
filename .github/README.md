@@ -89,8 +89,9 @@ This command offers insights into the branches within Git repositories located i
 #### Usage
 
 ```bash
-swissgit branches
+swissgit branches [-h]
 ```
+- `-h`: Show help message
 
 #### Example Output
 
@@ -166,8 +167,9 @@ This Bash script provides a concise overview of the status of Git repositories w
 #### Usage
 
 ```bash
-swissgit status
+swissgit status [-h]
 ```
+- `-h`: Show help message
 
 #### Example Output
 
