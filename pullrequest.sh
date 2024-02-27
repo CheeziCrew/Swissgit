@@ -83,7 +83,7 @@ _pullrequest() {
         git add . >/dev/null 2>&1
 
         # Commit changes
-        git commit -m "$branchname": $commit_message" >/dev/null 2>&1
+        git commit -m "$branchname: $commit_message" >/dev/null 2>&1
 
         # Push changes
         git push origin "$branchname" >/dev/null 2>&1
@@ -98,7 +98,7 @@ _pullrequest() {
         fi
 
         # Create PR using GitHub CLI and capture the output
-        pr_output=$(gh pr create --title "$commit_message" --body "$pr_body" --base main --head "$branchname" 2>&1)
+        pr_output=$(gh pr create --title "$branchname: $commit_message" --body "$pr_body" --base main --head "$branchname" 2>&1)
 
         # Extract the URL from the output
         pr_url=$(echo "$pr_output" | grep -o 'https://github.com/[^\"]*')

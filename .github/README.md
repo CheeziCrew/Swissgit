@@ -84,13 +84,14 @@ Commands:
 
 ### Branches
 
-This command offers insights into the branches within Git repositories located in the current directory. It provides details on local and remote branches, highlighting the main branch and identifying stale branches for cleanup.
+This command offers insights into the branches within Git repositories located in the current directory. It provides details on local and remote branches, highlighting the main branch and identifying stale branches for cleanup. Will only check the current directory if it is a git repo. Otherwise it will check all subdirectories.
 
 #### Usage
 
 ```bash
 swissgit branches [-h]
 ```
+
 - `-h`: Show help message
 
 #### Example Output
@@ -110,9 +111,10 @@ swissgit cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
 ```
 
 - `-h`: Show help message
-- `-d`: Drop all changes including untracked files.
 - `-a`: Apply changes to all repositories within the directory (recursive).
+- `-d`: Drop all changes including untracked files.
 - `-f <target_dir>`: Specify the directory path where the repositories are located. (Default: current directory)
+- `-d`: Stash local changes before cleaning up.
 
 #### Example Output
 
@@ -122,9 +124,40 @@ swissgit cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
 
 ##
 
+### Clone
+
+This bash script automates the process of cloning all repositories associated with a team in an organization. It utilizes GitHub CLI and necessitates a personal access token for repository cloning.
+
+#### Usage
+
+```bash
+swissgit Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]
+```
+
+- `-h`: Show help message
+- `-o <organization>`: Specify the GitHub organization."
+- `-t <team>`: Specify the team within the organization."
+- `-k <token>`: Specify the GitHub personal access token."
+- `-f <target_dir>`: Specify the target directory for cloning. Defaults to the current directory.
+
+#### Example Output
+
+- Cloning repository: [repositoryName]
+- Cloning completed successfully.
+
+##
+
 ### Commit
 
-This command wraps up the commands normally used for creating a commit and push it. It has the option to choose to commit to the current branch or providing a flag to create a new branch to commit to. This is useful for those times you don't want to create PR straight away or want to update a PR. This is currently not a batch command.
+This command wraps up the commands normally used for creating a commit and push it. It has the option to choose to commit to the current branch or providing a flag to create a new branch to commit to. This is useful for those times you don't want to create PR straight away or want to update a PR.
+
+Note that the branch name will be added as a prefix to the commit message, so name your branches accordingly.
+
+For example:
+
+- Branch: `CHZ-001`
+- Inputted commit message: `Implement feature and did stuff`
+- Actual committed message: `CHZ-001: Implement feature and did stuff`
 
 #### Usage
 
@@ -133,14 +166,24 @@ swissgit [-h] -c <commit_message> -b <branchname>"
 ```
 
 - `-h`: Show help message
+- `-a`: Apply changes to all repositories within the directory (recursive).
 - `-b <branchname>`: Name of the new branch.
 - `-c <commit_message>`: Commit message for the changes.
+- `-n`: Do not push the commit to the remote repository.
 
 ##
 
 ### Pull Request
 
 This command automates the process of creating pull requests in Git repositories. It simplifies branching, committing, pushing changes, and creating pull requests, either for a single repository or across multiple repositories.
+
+Note that the branch name will be added as a prefix to the commit message, so name your branches accordingly.
+
+For example:
+
+- Branch: `CHZ-001`
+- Inputted commit message: `Implement feature and did stuff`
+- Actual committed message: `CHZ-001: Implement feature and did stuff`
 
 #### Usage
 
@@ -162,13 +205,14 @@ swissgit pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>
 
 ### Status
 
-This Bash script provides a concise overview of the status of Git repositories within the current directory. It displays information such as branch names, commits ahead/behind, and changes in a color-coded format.
+This Bash script provides a concise overview of the status of Git repositories within the current directory. It displays information such as branch names, commits ahead/behind, and changes in a color-coded format. Will only check the current directory if it is a git repo. Otherwise it will check all subdirectories.
 
 #### Usage
 
 ```bash
 swissgit status [-h]
 ```
+
 - `-h`: Show help message
 
 #### Example Output
