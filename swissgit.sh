@@ -21,16 +21,12 @@ _usage() {
 Usage: swissgit COMMAND [OPTIONS]
 
 Commands:
-  status                Recursively checks the status of repositories. If current dir is a git repo, it will only check that repo.
-  branches              Recursively checks the branch status of repositories. If current dir is a git repo, it will only check that repo.
-  cleanup [-h] [-d <drop_changes>] [-a <all_repos>] [-f <target_dir>]
-                        Clean untracked files. Use -a to clean all, -d to drop local changes, and [folder] to specify a folder.
-  clone [-h] -o <organization> -t <team> -k <token> [-d <target_dir>]
-                        Clone a team's repositories with SSH. Requires a personal access token.
-  commit [-h] [-a] -c <commit_message> [-b <branchname>] 
-                        Create and push a commit on the current branch or a new one. Without a PR. Use -a for recursively doing for all subdirectories.      
-  pullrequest [-h] [-a] -b <branchname> -c <commit_message> [-p <pr_body>]
-                        Create a pull request. Use -a for recursively doing for all subdirectories. Creates a branch, commits all your changes, and creates a pull request.
+  status                Recursively checks the status of repositories. If current dir is a git repo, it will only check that repo. Use 'swissgit status -h' for more information.
+  branches              Recursively checks the branch status of repositories. If current dir is a git repo, it will only check that repo. Use 'swissgit branches -h' for more information.
+  cleanup               Clean up your repositories. Check out and update main, drop merged branches and drop no longer needed changes. Use 'swissgit cleanup -h' for more information.
+  clone                 Clone a teams repositories with SSH. Requires a personal access token. Use 'swissgit clone -h' for more information.
+  commit                Create and push a commit on the current branch or a new one. Without a PR. Use 'swissgit commit -h' for more information.
+  pullrequest           Create a pull request. Creates a branch, commits all your changes, and creates a pull request. Use 'swissgit pullrequest -h' for more information.
   help                  Show this help message and exit
 EOF
 }
@@ -47,10 +43,10 @@ swissgit() {
 
     case "$command" in
     status)
-        _status
+        _status "$@"
         ;;
     branches)
-        _branches
+        _branches "$@"
         ;;
     cleanup)
         _cleanup "$@"

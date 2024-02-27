@@ -8,6 +8,16 @@ YELLOW=$(tput setaf 3)
 NC=$(tput sgr0) # No Color
 
 _branches() {
+    # Handle -h option separately
+    if [[ "$1" == "-h" ]]; then
+        echo "Usage: swissgit branches"
+        echo ""
+        echo "This command recursively checks the branch status of repositories."
+        echo "If the current directory is a git repository, it will only check that repo."
+
+        return 0
+    fi
+
     # Check if the current directory is a git repository
     if [ -d ".git" ]; then
         dirs=(".")
