@@ -3,10 +3,9 @@
 _status() {
     # Handle -h option separately
     if [[ "$1" == "-h" ]]; then
-        echo "Usage: swissgit status"
-        echo ""
-        echo "This command recursively checks the status of repositories."
-        echo "If the current directory is a git repository, it will only check that repo."
+        echo "Usage: swissgit status [options]"
+        echo "Options:"
+        echo "  -h                      Show this help message and exit."
         return 0
     fi
 

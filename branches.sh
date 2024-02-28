@@ -10,11 +10,9 @@ NC=$(tput sgr0) # No Color
 _branches() {
     # Handle -h option separately
     if [[ "$1" == "-h" ]]; then
-        echo "Usage: swissgit branches"
-        echo ""
-        echo "This command recursively checks the branch status of repositories."
-        echo "If the current directory is a git repository, it will only check that repo."
-
+        echo "Usage: swissgit branches [options]"
+        echo "Options:"
+        echo "  -h                      Show this help message and exit."
         return 0
     fi
 
