@@ -9,7 +9,7 @@ _clone() {
         echo "  -o <organization>       Specify the GitHub organization."
         echo "  -t <team>               Specify the team within the organization."
         echo "  -k <token>              Specify the GitHub personal access token."
-        echo "  -d <target_dir>         Specify the target directory for cloning. Defaults to the current directory."
+        echo "  -f <target_dir>         Specify the target directory for cloning. Defaults to the current directory."
         return 0
     fi
 
@@ -29,7 +29,7 @@ _clone() {
         k)
             token="$OPTARG"
             ;;
-        d)
+        f)
             target_dir="$OPTARG"
             ;;
         \?)
