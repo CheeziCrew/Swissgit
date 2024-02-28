@@ -42,12 +42,12 @@ _cleanup() {
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
-            echo "Usage: swissgit cleanup [-h] [-d] [-a][-s] [-f <target_dir>] "
+            echo "Usage: swissgit cleanup [-h][-d][-a][-s] [-f <target_dir>] "
             return 1
             ;;
         :)
             echo "Option -$OPTARG requires an argument." >&2
-            echo "Usage: swissgit cleanup [-h] [-d] [-a][-s] [-f <target_dir>] "
+            echo "Usage: swissgit cleanup [-h][-d][-a][-s] [-f <target_dir>] "
             return 1
             ;;
         esac
