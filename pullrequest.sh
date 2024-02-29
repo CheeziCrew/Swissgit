@@ -66,16 +66,16 @@ _pullrequest() {
     else
         # Check if there are changes to commit
         if [[ -z $(git status --porcelain) ]]; then
-            echo "$dir: No changes to commit. Aborting."
+            echo "$(basename "$PWD"): No changes to commit. Aborting."
             return 1
         fi
 
         # Check if the branch already exists or create a new branch
         git rev-parse --verify "$branchname" >/dev/null 2>&1 && {
-            echo "$dir: Branch '$branchname' already exists. Aborting."
+            echo "$(basename "$PWD"): Branch '$branchname' already exists. Aborting."
             return 1
         } || git checkout -b "$branchname" >/dev/null 2>&1 || {
-            echo "$dir: Failed to create branch '$branchname'. Aborting."
+            echo "$(basename "$PWD"): Failed to create branch '$branchname'. Aborting."
             return 1
         }
 
@@ -90,9 +90,9 @@ _pullrequest() {
 
         # Check if the push was successful
         if [ $? -ne 0 ]; then
-            echo "$dir: Failed to push changes to the remote repository. Trying to pull latest changes..."
+            echo "$(basename "$PWD"): Failed to push changes to the remote repository. Trying to pull latest changes..."
             git pull origin "$branchname" && git push origin "$branchname" || {
-                echo "$dir: Failed to pull latest changes. Please resolve conflicts manually."
+                echo "$(basename "$PWD"): Failed to pull latest changes. Please resolve conflicts manually."
                 return 1
             }
         fi
