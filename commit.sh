@@ -53,10 +53,11 @@ _commit() {
                 dir="${dir%/}" # Remove trailing slash
                 (
                     cd "$dir" || return
-                    _commit "$branchname" "$commit_message"
-                )
+                    _commit "$branchname" "$commit_message" &
+                ) &
             fi
         done
+        wait # Wait for all background processes to finish
     else
         # Check if both commit_message provided
         if [[ -z $commit_message ]]; then
@@ -66,22 +67,22 @@ _commit() {
         fi
 
         if [[ -z $(git status --porcelain) ]]; then
-            echo "No changes to commit. Aborting."
+            echo "$(basename "$PWD"): No changes to commit. Aborting."
             return 1
         fi
 
         if [[ -n $branchname ]]; then
             # Check if the branch already exists
             if git rev-parse --verify "$branchname" >/dev/null 2>&1; then
-                echo "Branch '$branchname' already exists. Checking out existing branch."
+                echo "$(basename "$PWD"): Branch '$branchname' already exists. Checking out existing branch."
                 git checkout "$branchname" >/dev/null 2>&1 || {
-                    echo "Failed to checkout branch '$branchname'. Aborting."
+                    echo "$(basename "$PWD"): Failed to checkout branch '$branchname'. Aborting."
                     return 1
                 }
             else
                 # Checkout a new branch
                 git checkout -b "$branchname" >/dev/null 2>&1 || {
-                    echo "Failed to create branch '$branchname'. Aborting."
+                    echo "$(basename "$PWD"): Failed to create branch '$branchname'. Aborting."
                     return 1
                 }
             fi
@@ -99,15 +100,17 @@ _commit() {
 
         if [[ $push == true ]]; then
             # Push changes
-            git push >/dev/null 2>&1
-
-            # Check if the push was successful
-            if [ $? -ne 0 ]; then
-                echo "Failed to push changes to the remote repository. Trying to pull latest changes..."
-                git pull && git push || {
-                    echo "Failed to push changes. Please check your connection or permissions, and try again."
+            if git push >/dev/null 2>&1; then
+                echo "$(basename "$PWD"): Changes successfully pushed to the remote repository."
+            else
+                # Check if the push was successful
+                echo "$(basename "$PWD"): Failed to push changes to '$branchname'. Trying to pull latest changes..."
+                if git pull >/dev/null 2>&1 && git push >/dev/null 2>&1; then
+                    echo "$(basename "$PWD"): Changes successfully pushed to the remote repository after pulling the latest changes."
+                else
+                    echo "$(basename "$PWD"): Failed to push changes to '$branchname'. Please check your connection or permissions, and try again."
                     return 1
-                }
+                fi
             fi
         fi
     fi

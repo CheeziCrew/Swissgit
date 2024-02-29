@@ -18,7 +18,7 @@ _clone() {
     token=""
     target_dir="."
 
-    while getopts ":o:t:k:d:" opt; do
+    while getopts ":o:t:k:f:" opt; do
         case ${opt} in
         o)
             organization="$OPTARG"
@@ -52,6 +52,7 @@ _clone() {
         return 1
     fi
 
+    echo "target dir is $target_dir"
     # Make clone dir if not exists
     mkdir -p "$target_dir" && cd "$target_dir"
 
@@ -60,11 +61,14 @@ _clone() {
 
     # Send a GET request to the GitHub API using `gh` CLI
     response=$(gh api --paginate "$url" -H "Authorization: token ${token}" -H "Accept: application/vnd.github.v3+json")
-    # Extract clone URLs from the response and clone repositories
+    # Extract clone URLs from the response and clone repositories concurrently
     echo "$response" | jq -r '.[].ssh_url' | while read -r ssh_url; do
         echo "Cloning repository: $ssh_url"
-        git clone "$ssh_url" >/dev/null 2>&1
+        git clone "$ssh_url" >/dev/null 2>&1 &
     done
+
+    # Wait for all background jobs to finish
+    wait
 
     echo "Cloning completed successfully."
 }

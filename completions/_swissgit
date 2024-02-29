@@ -42,7 +42,7 @@ _swissgit() {
             options=(
                 '-h:Show help message and exit'
                 '-o:Specify the GitHub organization'
-                '-t:The target directory where the repositories should be cloned to. Defaults to the current directory'
+                '-t:Specify the team within the GitHub organization'
                 '-k:Specify the GitHub personal access token'
                 '-f:Specify the target directory for cloning. Defaults to the current directory'
             )
