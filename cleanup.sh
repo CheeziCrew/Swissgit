@@ -12,7 +12,7 @@ _cleanup() {
     if [[ "$1" == "-h" ]]; then
         echo "Usage: swissgit cleanup [options]"
         echo "Options:"
-        echo "  -h                      Show this help message and exit."
+        echo "  -h                      Show this help status_line and exit."
         echo "  -a                      Apply cleanup to all repositories in the target directory, including subdirectories."
         echo "  -d                      Drop all changes in the repositories. This will reset the repository to the last commit and remove untracked files."
         echo "  -f <target_dir>         Specify the target directory where the repositories are located. Defaults to the current directory."
@@ -102,25 +102,29 @@ _cleanup() {
                     git stash pop >/dev/null 2>&1
                 fi
 
-                # Output
+                # Initialize a variable to construct the entire status_line
+                local status_line=""
+
                 if [[ -z $changes && $branches -eq 1 && $current_branch == "main" && $pruned_branches == 0 ]]; then
-                    echo -e "${GREEN}$dir: ${NC}"
+                    status_line="${GREEN}$dir: ${NC}"
                 else
-                    echo -n "${RED}$dir: ${NC}"
+                    status_line="${RED}$dir: ${NC}"
                     if [[ -n $changes ]]; then
-                        echo -n "${BLUE}Non Committed Changes:${NC} $changes "
+                        status_line+="${BLUE}Non Committed Changes:${NC} $changes "
                     fi
                     if [[ $branches -ne 1 ]]; then
-                        echo -n "${YELLOW} Too many branches: $branches${NC}"
+                        status_line+="${YELLOW} Too many branches: $branches${NC} "
                     fi
                     if [[ $current_branch != "main" ]]; then
-                        echo -n "${BLUE} Current Branch: $current_branch${NC}"
+                        status_line+="${BLUE} Current Branch: $current_branch${NC} "
                     fi
                     if [[ $pruned_branches -ne 0 ]]; then
-                        echo -n "${YELLOW} Pruned Branches: $pruned_branches${NC}"
+                        status_line+="${YELLOW} Pruned Branches: $pruned_branches${NC}"
                     fi
-                    echo "" # Move to the next line for the next repository
                 fi
+
+                # Print the entire status_line for this directory at once
+                echo -e "$status_line"
             ) &
         fi
     done < <(find "$target_dir" "${find_options[@]}" -type d -print0)

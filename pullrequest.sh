@@ -58,24 +58,24 @@ _pullrequest() {
                 dir="${dir%/}" # Remove trailing slash
                 (
                     cd "$dir" || return
-                    _pullrequest "$branchname" "$commit_message" "$pr_body"
-                )
+                    _pullrequest "$branchname" "$commit_message" "$pr_body" &
+                ) &
             fi
         done
         wait # Wait for all background processes to finish
     else
         # Check if there are changes to commit
         if [[ -z $(git status --porcelain) ]]; then
-            echo "No changes to commit. Aborting."
+            echo "$dir: No changes to commit. Aborting."
             return 1
         fi
 
         # Check if the branch already exists or create a new branch
         git rev-parse --verify "$branchname" >/dev/null 2>&1 && {
-            echo "Branch '$branchname' already exists. Aborting."
+            echo "$dir: Branch '$branchname' already exists. Aborting."
             return 1
         } || git checkout -b "$branchname" >/dev/null 2>&1 || {
-            echo "Failed to create branch '$branchname'. Aborting."
+            echo "$dir: Failed to create branch '$branchname'. Aborting."
             return 1
         }
 
@@ -90,9 +90,9 @@ _pullrequest() {
 
         # Check if the push was successful
         if [ $? -ne 0 ]; then
-            echo "Failed to push changes to the remote repository. Trying to pull latest changes..."
+            echo "$dir: Failed to push changes to the remote repository. Trying to pull latest changes..."
             git pull origin "$branchname" && git push origin "$branchname" || {
-                echo "Failed to pull latest changes. Please resolve conflicts manually."
+                echo "$dir: Failed to pull latest changes. Please resolve conflicts manually."
                 return 1
             }
         fi

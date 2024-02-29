@@ -23,56 +23,70 @@ _status() {
     NC=$(tput sgr0) # No Color
 
     for dir in "${dirs[@]}"; do
-        if [[ -d "$dir/.git" ]]; then
-            local repo_name=$(basename "$dir")
-            local status_output=$(cd "$dir" && git status --porcelain)
-            local branch=$(cd "$dir" && git symbolic-ref --short -q HEAD)
-            local ahead_behind=$(cd "$dir" && git rev-list --left-right --count HEAD...@{u} 2>/dev/null)
-            local ahead=$(echo "$ahead_behind" | awk '{print $1}')
-            local behind=$(echo "$ahead_behind" | awk '{print $2}')
-            local changed=$(echo "$status_output" | grep -c '^ M\|^M ')
-            local new=$(echo "$status_output" | grep -c '^ A\|^A ')
-            local deleted=$(echo "$status_output" | grep -c '^ D\|^D ')
-            local untracked=$(echo "$status_output" | grep -c '^??')
-
-            echo -n "${repo_name}: "
-
-            # Print branch name if available
-            if [[ -n $branch ]]; then
-                # Print main branch
-                if [[ "$branch" == "main" ]]; then
-                    echo -n "${GREEN}$branch ${NC}"
-                else
-                    echo -n "${YELLOW}$branch ${NC}"
+        {
+            # Check if the directory exists and is a valid Git repository
+            if [[ -d "$dir/.git" ]] && (cd "$dir" && git rev-parse --git-dir >/dev/null 2>&1); then
+                # Attempt to change directory and fetch all branches
+                if ! cd "$dir" >/dev/null 2>&1; then
+                    echo "Error: Failed to change directory to $dir. Skipping..."
+                    continue
                 fi
 
-            fi
+                if ! git fetch --all >/dev/null 2>&1; then
+                    echo "Error: Failed to fetch Git repositories in $dir. Skipping..."
+                    cd - >/dev/null 2>&1 # Return to the previous directory
+                    continue
+                fi
 
-            # Print commits ahead/behind if available
-            if [[ -n $ahead && $ahead -gt 0 ]] || [[ -n $behind && $behind -gt 0 ]]; then
-                echo -n "(${GREEN}${ahead}/${RED}${behind}) ${NC}"
-            fi
+                cd - >/dev/null 2>&1 # Return to the previous directory
 
-            # Print changes with colors
-            if [[ $changed -gt 0 ]]; then
-                echo -n "${YELLOW}(M) ${changed}  ${NC}"
-            fi
-            if [[ $new -gt 0 ]]; then
-                echo -n "${GREEN}(A) ${new}  ${NC}"
-            fi
-            if [[ $deleted -gt 0 ]]; then
-                echo -n "${RED}(D) ${deleted}  ${NC}"
-            fi
-            if [[ $untracked -gt 0 ]]; then
-                echo -n "${BLUE}(U) ${untracked}  ${NC}"
-            fi
+                local repo_name=$(basename "$dir")
+                local status_output=$(cd "$dir" && git status --porcelain)
+                local branch=$(cd "$dir" && git symbolic-ref --short -q HEAD)
+                local ahead_behind=$(cd "$dir" && git rev-list --left-right --count HEAD...@{u} 2>/dev/null)
+                local ahead=$(echo "$ahead_behind" | awk '{print $1}')
+                local behind=$(echo "$ahead_behind" | awk '{print $2}')
+                local changed=$(echo "$status_output" | grep -c '^ M\|^M ')
+                local new=$(echo "$status_output" | grep -c '^ A\|^A ')
+                local deleted=$(echo "$status_output" | grep -c '^ D\|^D ')
+                local untracked=$(echo "$status_output" | grep -c '^??')
 
-            # Add a green 󰞑 if no changes and not ahead/behind
-            if [[ $changed -eq 0 && $new -eq 0 && $deleted -eq 0 && $untracked -eq 0 && -z $ahead && -z $behind ]]; then
-                echo -n "${GREEN}󰞑${NC}"
-            fi
+                local status_line="${repo_name}: "
 
-            echo ""
-        fi
+                # Build the status line
+                if [[ -n $branch ]]; then
+                    if [[ "$branch" == "main" ]]; then
+                        status_line+="${GREEN}$branch ${NC}"
+                    else
+                        status_line+="${YELLOW}$branch ${NC}"
+                    fi
+                fi
+
+                if [[ -n $ahead && $ahead -gt 0 ]] || [[ -n $behind && $behind -gt 0 ]]; then
+                    status_line+="(${GREEN}${ahead}/${RED}${behind}) ${NC}"
+                fi
+
+                if [[ $changed -gt 0 ]]; then
+                    status_line+="${YELLOW}(M) ${changed}  ${NC}"
+                fi
+                if [[ $new -gt 0 ]]; then
+                    status_line+="${GREEN}(A) ${new}  ${NC}"
+                fi
+                if [[ $deleted -gt 0 ]]; then
+                    status_line+="${RED}(D) ${deleted}  ${NC}"
+                fi
+                if [[ $untracked -gt 0 ]]; then
+                    status_line+="${BLUE}(U) ${untracked}  ${NC}"
+                fi
+
+                if [[ $changed -eq 0 && $new -eq 0 && $deleted -eq 0 && $untracked -eq 0 && -z $ahead && -z $behind ]]; then
+                    status_line+="${GREEN}󰞑${NC}"
+                fi
+
+                # Echo the fully assembled status line
+                echo "$status_line"
+            fi
+        } &
     done
+    wait # Wait for all background jobs to finish
 }
