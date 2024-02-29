@@ -2,7 +2,6 @@
 
 ![Untitled_Artwork_15](https://github.com/CheeziCrew/Swissgit/assets/110965999/0edfe55f-38a2-4d06-9c39-5b60ff7f5441)
 
-
 ## Description
 
 Swiss Git is a comprehensive tooling solution designed to streamline and simplify Git repository management, particularly when dealing with multiple repositories simultaneously.
@@ -134,7 +133,7 @@ This bash script automates the process of cloning all repositories associated wi
 #### Usage
 
 ```bash
-swissgit Usage: swissgit clone -o <organization> -t <team> -k <token> [-d <target_dir>]
+swissgit Usage: swissgit clone -o <organization> -t <team> -k <token> [-f <target_dir>]
 ```
 
 - `-h`: Show help message
