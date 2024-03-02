@@ -33,6 +33,7 @@ EOF
 
 # Dispatch commands based on user input
 swissgit() {
+    unsetopt MONITOR # or set +m
     if [ "$#" -eq 0 ]; then
         echo "Error: No command provided. Use 'swissgit help' for usage information."
         return 1
