@@ -40,6 +40,13 @@ To install this repository, follow these steps:
      source /path/to/your/repository/swissgit.sh
      ```
 
+     For bonus points, add the following lines to your Zsh configuration file to enable tab completion for Swiss Git commands:
+
+     ```bash
+     source /path/to/your/repository/completions/_swissgit
+     autoload -Uz compinit && compinit
+     ```
+
    - For Bash:
 
      Add the following line to your Bash configuration file (e.g., `~/.bashrc` or `~/.bash_profile`):
@@ -226,7 +233,7 @@ swissgit status [-h]
 
 ## Contributing
 
-Feel free to create a pull request if you have suggestions on changes. Or create an issue if you find something that is behaving wierdly, have a question or suggestion.
+Feel free to create a pull request if you have suggestions on changes. Or create an issue if you find something that is behaving weirdly, have a question or suggestion.
 
 ## License
 
