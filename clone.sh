@@ -63,7 +63,7 @@ _clone() {
     response=$(gh api --paginate "$url" -H "Authorization: token ${token}" -H "Accept: application/vnd.github.v3+json")
     # Extract clone URLs from the response and clone repositories concurrently
     echo "$response" | jq -r '.[].ssh_url' | while read -r ssh_url; do
-        echo "Cloning repository: $ssh_url"
+        echo "Cloning repository: $(basename -s .git "$ssh_url")"
         git clone "$ssh_url" >/dev/null 2>&1 &
     done
 
