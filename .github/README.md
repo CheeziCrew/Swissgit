@@ -10,15 +10,25 @@ Swiss Git is a comprehensive tooling solution designed to streamline and simplif
 
 1. [Description](#description)
 2. [Table of Contents](#table-of-contents)
-3. [Installation](#installation)
-4. [Usage](#usage)
-5. [Features](#features)
-6. [Documentation](#documentation)
-7. [Contributing](#contributing)
-8. [License](#license)
-9. [Acknowledgements](#acknowledgements)
-10. [Contact Information](#contact-information)
-11. [FAQs](#faqs)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [Usage](#usage)
+6. [Features](#features)
+7. [Documentation](#documentation)
+8. [Contributing](#contributing)
+9. [License](#license)
+10. [Acknowledgements](#acknowledgements)
+11. [Contact Information](#contact-information)
+12. [FAQs](#faqs)
+
+## Requirements
+
+Before installing Swiss Git, ensure you have the following requirements installed:
+
+- **Git**: Swiss Git is built on top of Git. You must have Git installed on your system. You can download it from [git-scm.com](https://git-scm.com/).
+- **GitHub CLI**: Some features of Swiss Git, such as cloning team repositories, require the GitHub CLI. You can install it by following the instructions on the [GitHub CLI documentation page](https://cli.github.com/manual/installation).
+
+Please also note that `git config --global push.autoSetupRemote true` is expected to be set for the `commit` and `pullrequest` commands to work as intended.
 
 ## Installation
 

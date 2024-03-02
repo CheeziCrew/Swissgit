@@ -41,7 +41,7 @@ _branches() {
 
                 cd - >/dev/null 2>&1 # Return to the previous directory
 
-                local repo_name=$(basename "$PWD")
+                local repo_name=$(cd "$dir" && basename "$PWD")
                 local local_branches=$(cd "$dir" && git branch --list | wc -l | tr -d ' ')
                 local remote_branches=$(cd "$dir" && git branch -r | grep -v '\->' | wc -l | tr -d ' ')
                 local main_branch=$(cd "$dir" && git symbolic-ref --short -q HEAD)
