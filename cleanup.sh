@@ -108,7 +108,7 @@ _cleanup() {
                 if [[ -z $changes && $branches -eq 1 && $current_branch == "main" && $pruned_branches == 0 ]]; then
                     status_line="${GREEN}$dir: ${NC}"
                 else
-                    status_line="${RED}$dir: ${NC}"
+                    status_line="${RED}$(basename "$PWD"): ${NC}"
                     if [[ -n $changes ]]; then
                         status_line+="${BLUE}Non Committed Changes:${NC} $changes "
                     fi
