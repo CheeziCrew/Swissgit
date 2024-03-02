@@ -51,7 +51,7 @@ _status() {
                 local deleted=$(echo "$status_output" | grep -c '^ D\|^D ')
                 local untracked=$(echo "$status_output" | grep -c '^??')
 
-                local status_line="${repo_name}: "
+                local status_line="$(basename "$PWD"): "
 
                 # Build the status line
                 if [[ -n $branch ]]; then
