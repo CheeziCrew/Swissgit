@@ -98,7 +98,7 @@ _pullrequest() {
         fi
 
         # Create PR using GitHub CLI and capture the output
-        pr_output=$(gh pr create --title "$branchname: $commit_message" --body "$pr_body" --base main --head "$branchname" 2>&1)
+        pr_output=$(gh pr create --title "$branchname: $commit_message" -f -T PULL_REQUEST_TEMPLATE.md --base main --head "$branchname" 2>&1)
 
         # Extract the URL from the output
         pr_url=$(echo "$pr_output" | grep -o 'https://github.com/[^\"]*')
