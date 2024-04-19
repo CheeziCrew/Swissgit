@@ -16,7 +16,7 @@ _pullrequest() {
     local all_repos_flag=false
     local pr_body=""
 
-    while getopts ":ab:c:p:" opt; do
+    while getopts ":ab:c:p:fb" opt; do
         case ${opt} in
         a)
             all_repos_flag=true
@@ -29,6 +29,12 @@ _pullrequest() {
             ;;
         p)
             pr_body="$OPTARG"
+            ;;
+        f)
+            feature_flag=true
+            ;;
+        b)
+            bugfix_flag=true
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -97,8 +103,32 @@ _pullrequest() {
             }
         fi
 
-        # Create PR using GitHub CLI and capture the output
-        pr_output=$(gh pr create --title "$branchname: $commit_message" --fill --template PULL_REQUEST_TEMPLATE.md --base main --head "$branchname")
+        # Before creating the PR, let's use the template
+        if [[ -f "PULL_REQUEST_TEMPLATE.md" ]]; then
+            # Read the template into a variable
+            template_content=$(<PULL_REQUEST_TEMPLATE.md)
+
+            # Modify the template based on conditions
+            if [[ "$feature_flag" == true ]]; then
+                template_content=$(echo "$template_content" | sed 's/- \[ \] New feature/- \[x\] New feature/')
+            fi
+            if [[ "$bugfix_flag" == true ]]; then
+                template_content=$(echo "$template_content" | sed 's/- \[ \] Bug fix/- \[x\] Bug fix/')
+            fi
+
+            # Save the modified template to a temporary file
+            temp_template_path=$(mktemp)
+            echo "$template_content" >"$temp_template_path"
+
+            # Use the modified template for PR creation
+            pr_output=$(gh pr create --title "$branchname: $commit_message" --base main --head "$branchname" -F "$temp_template_path" 2>&1)
+
+            # Clean up the temporary file
+            rm "$temp_template_path"
+        else
+            # Fallback to the original method if no template is found
+            pr_output=$(gh pr create --title "$branchname: $commit_message" --body "$pr_body" --base main --head "$branchname" 2>&1)
+        fi
 
         # Extract the URL from the output
         pr_url=$(echo "$pr_output" | grep -o 'https://github.com/[^\"]*')
