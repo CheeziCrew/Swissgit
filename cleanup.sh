@@ -66,10 +66,6 @@ _cleanup() {
             (
                 cd "$dir"
 
-                if [[ $stash_changes -eq 1 ]]; then
-                    git stash >/dev/null 2>&1
-                fi
-
                 # Check if there are changes (including untracked files)
                 changes=""
                 if git status --porcelain | grep -Eq '^.M|^.D|^\?\?'; then
@@ -86,7 +82,11 @@ _cleanup() {
                 if [[ -z $changes || $changes == "${RED}Dropped all changes${NC}" ]]; then
                     git switch main >/dev/null 2>&1
                     git fetch --prune >/dev/null 2>&1
-                    git pull >/dev/null 2>&1
+                    if [[ $stash_changes -eq 1 ]]; then
+                        git pull --rebase --autostash >/dev/null 2>&1
+                    else
+                        git pull >/dev/null 2>&1
+                    fi
                 fi
 
                 current_branch=$(git rev-parse --abbrev-ref HEAD)
@@ -97,10 +97,6 @@ _cleanup() {
                     git branch --merged main | grep -v '^\* main$' | xargs -n 1 git branch -d >/dev/null 2>&1
                 fi
                 branches=$(git branch | wc -l | awk '{$1=$1};1')
-
-                if [[ $stash_changes -eq 1 ]]; then
-                    git stash pop >/dev/null 2>&1
-                fi
 
                 # Initialize a variable to construct the entire status_line
                 local status_line=""
