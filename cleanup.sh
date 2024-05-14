@@ -16,7 +16,7 @@ _cleanup() {
         echo "  -a                      Apply cleanup to all repositories in the target directory, including subdirectories."
         echo "  -d                      Drop all changes in the repositories. This will reset the repository to the last commit and remove untracked files."
         echo "  -f <target_dir>         Specify the target directory where the repositories are located. Defaults to the current directory."
-        echo "  -s                      Stash local changes"
+        echo "  -s                      Rebase with autostash"
         return 0
     fi
 
