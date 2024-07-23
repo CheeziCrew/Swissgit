@@ -80,25 +80,32 @@ _pullrequest() {
         }
 
         # Add all changes
-        git add . >/dev/null 2>&1
+        git add . >/dev/null 2>&1 || {
+            echo "$(basename "$PWD"): Failed to add changes. Aborting."
+            return 1
+        }
 
         # Commit changes
-        git commit -m "$branchname: $commit_message" >/dev/null 2>&1
+        git commit -m "$branchname: $commit_message" >/dev/null 2>&1 || {
+            echo "$(basename "$PWD"): Commit failed. Aborting."
+            return 1
+        }
 
         # Push changes
-        git push origin "$branchname" >/dev/null 2>&1
-
-        # Check if the push was successful
-        if [ $? -ne 0 ]; then
+        git push origin "$branchname" >/dev/null 2>&1 || {
             echo "$(basename "$PWD"): Failed to push changes to the remote repository. Trying to pull latest changes..."
             git pull origin "$branchname" && git push origin "$branchname" || {
                 echo "$(basename "$PWD"): Failed to pull latest changes. Please resolve conflicts manually."
                 return 1
             }
-        fi
+        }
 
         # Create PR using GitHub CLI and capture the output
         pr_output=$(gh pr create --title "$branchname: $commit_message" --body "$pr_body" --base main --head "$branchname" 2>&1)
+        if [ $? -ne 0 ]; then
+            echo "$(basename "$PWD"): Failed to create pull request. Error: $pr_output"
+            return 1
+        fi
 
         # Extract the URL from the output
         pr_url=$(echo "$pr_output" | grep -o 'https://github.com/[^\"]*')
