@@ -14,7 +14,7 @@ create_pull_request_in_repo() {
     # Check if the branch already exists or create a new branch
     git rev-parse --verify "$branchname" >/dev/null 2>&1 && {
         echo "$(basename "$PWD"): Branch '$branchname' already exists. Aborting."
-        return 1sw
+        return 1
     } || git checkout -b "$branchname" >/dev/null 2>&1 || {
         echo "$(basename "$PWD"): Failed to create branch '$branchname'. Aborting."
         return 1
@@ -96,10 +96,12 @@ _pullrequest() {
 
     # Prompt for branch name and commit message if not provided
     if [[ -z $branchname ]]; then
-        read -p "Enter the branch name: " branchname
+        echo "Enter the branch name:"
+        read branchname
     fi
     if [[ -z $commit_message ]]; then
-        read -p "Enter the commit message: " commit_message
+        echo "Enter the commit message:"
+        read commit_message
     fi
 
     # Read and process the PULL_REQUEST_TEMPLATE.md if not already provided
@@ -115,7 +117,8 @@ _pullrequest() {
         echo "5. Refactoring (no functional changes, no api changes)"
         echo "6. Build related changes"
         echo "7. Documentation content changes"
-        read -p "Your choices: " types_of_changes
+        echo "Your choices:"
+        read types_of_changes
 
         # Replace placeholders in the template using sed with escaping
         for choice in $types_of_changes; do
@@ -131,7 +134,8 @@ _pullrequest() {
         done
 
         # Prompt for breaking change
-        read -p "Does this PR introduce a breaking change? (y/n): " breaking_change
+        echo "Does this PR introduce a breaking change? (y/n):"
+        read breaking_change
         if [[ $breaking_change == "y" ]]; then
             pr_body=$(echo "$pr_body" | sed 's/- \[ \] Yes (I have stepped the version number accordingly)/- [x] Yes (I have stepped the version number accordingly)/')
             pr_body=$(echo "$pr_body" | sed 's/- \[ \] No/- [ ] No/')
@@ -141,21 +145,24 @@ _pullrequest() {
         fi
 
         # Prompt for checklist items
-        read -p "Does your code follow the code style of this project? (y/n): " code_style
+        echo "Does your code follow the code style of this project? (y/n):"
+        read code_style
         if [[ $code_style == "y" ]]; then
             pr_body=$(echo "$pr_body" | sed 's/- \[ \] My code follows the code style of this project\./- [x] My code follows the code style of this project./')
         else
             pr_body=$(echo "$pr_body" | sed 's/- \[ \] My code follows the code style of this project\./- [ ] My code follows the code style of this project./')
         fi
 
-        read -p "Have you updated the documentation accordingly (if applicable)? (y/n): " documentation
+        echo "Have you updated the documentation accordingly (if applicable)? (y/n):"
+        read documentation
         if [[ $documentation == "y" ]]; then
             pr_body=$(echo "$pr_body" | sed 's/- \[ \] I have updated the documentation accordingly (if applicable)\./- [x] I have updated the documentation accordingly (if applicable)./')
         else
             pr_body=$(echo "$pr_body" | sed 's/- \[ \] I have updated the documentation accordingly (if applicable)\./- [ ] I have updated the documentation accordingly (if applicable)./')
         fi
 
-        read -p "Have you added/updated tests to cover your changes (if applicable)? (y/n): " tests_updated
+        echo "Have you added/updated tests to cover your changes (if applicable)? (y/n):"
+        read tests_updated
         if [[ $tests_updated == "y" ]]; then
             pr_body=$(echo "$pr_body" | sed 's/- \[ \] I have added\/updated tests to cover my changes (if applicable)\./- [x] I have added\/updated tests to cover my changes (if applicable)./')
         else
