@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/CheeziCrew/swissgo/utils"
+	"github.com/CheeziCrew/swissgit/utils"
 	"github.com/fatih/color"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"

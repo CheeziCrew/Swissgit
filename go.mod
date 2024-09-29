@@ -1,4 +1,4 @@
-module github.com/CheeziCrew/swissgo
+module github.com/CheeziCrew/swissgit
 
 go 1.23.1
 

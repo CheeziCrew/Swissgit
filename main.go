@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/CheeziCrew/swissgo/branches"
-	"github.com/CheeziCrew/swissgo/cleanup"
-	"github.com/CheeziCrew/swissgo/clone"
-	"github.com/CheeziCrew/swissgo/commit"
-	"github.com/CheeziCrew/swissgo/pull_request"
-	"github.com/CheeziCrew/swissgo/status"
+	"github.com/CheeziCrew/swissgit/branches"
+	"github.com/CheeziCrew/swissgit/cleanup"
+	"github.com/CheeziCrew/swissgit/clone"
+	"github.com/CheeziCrew/swissgit/commit"
+	"github.com/CheeziCrew/swissgit/pull_request"
+	"github.com/CheeziCrew/swissgit/status"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
@@ -38,8 +38,8 @@ func init() {
 
 func main() {
 	var rootCmd = &cobra.Command{
-		Use:   "swissgo",
-		Short: "SwissGo - A versatile tool for handling Git repositories",
+		Use:   "swissgit",
+		Short: "SwissGit - A versatile tool for handling Git repositories",
 	}
 
 	// Add the status and branches commands

@@ -5,8 +5,8 @@ import (
 	"io"
 	"os/exec"
 
-	"github.com/CheeziCrew/swissgo/utils"
-	gc "github.com/CheeziCrew/swissgo/utils/gitCommands"
+	"github.com/CheeziCrew/swissgit/utils"
+	gc "github.com/CheeziCrew/swissgit/utils/gitCommands"
 	"github.com/fatih/color"
 	"github.com/go-git/go-git/v5"
 )
@@ -52,7 +52,7 @@ func commitAndPush(repoPath, branchName, commitMessage string) error {
 		return fmt.Errorf("failed to add files: %w", err)
 	}
 
-	gc.PullChanges(worktree)
+	//gc.PullChanges(worktree)
 
 	status, err := worktree.Status()
 	if err != nil {
@@ -66,11 +66,14 @@ func commitAndPush(repoPath, branchName, commitMessage string) error {
 
 	// Create a new branch
 	if branchName != "" {
-		createNewBranch(repoPath, branchName, worktree)
+		createNewBranch(branchName, worktree)
 	}
 
 	commit(branchName, commitMessage, repoPath)
-	gc.PushChanges(repo)
+	err = gc.PushChanges(repo)
+	if err != nil {
+		return fmt.Errorf("failed to push changes: %w", err)
+	}
 	return nil
 }
 

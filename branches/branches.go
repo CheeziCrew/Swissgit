@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/CheeziCrew/swissgo/utils"
+	"github.com/CheeziCrew/swissgit/utils"
 )
 
 // ScanAndPrintBranches scans the specified directory and prints branch information.

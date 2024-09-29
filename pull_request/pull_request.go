@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/CheeziCrew/swissgo/commit"
-	"github.com/CheeziCrew/swissgo/utils"
+	"github.com/CheeziCrew/swissgit/commit"
+	"github.com/CheeziCrew/swissgit/utils"
 	"github.com/fatih/color"
 	"github.com/go-git/go-git/v5"
 )
