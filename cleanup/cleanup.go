@@ -2,14 +2,16 @@ package cleanup
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/CheeziCrew/swissgit/utils"
+	"github.com/CheeziCrew/swissgit/utils/gitCommands"
 	"github.com/fatih/color"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // CleanupOptions holds the configuration for the cleanup process
@@ -20,11 +22,17 @@ type CleanupOptions struct {
 }
 
 // Cleanup performs the cleanup process on repositories in the specified directory
-func Cleanup(opts CleanupOptions) error {
+func Cleanup(opts CleanupOptions) {
 	if opts.AllFlag {
-		return ProcessSubdirectories(opts)
+		err := ProcessSubdirectories(opts)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+		}
 	} else {
-		return ProcessSingleRepository(opts)
+		err := ProcessSingleRepository(opts)
+		if err != nil {
+			fmt.Printf("%s: %s\n", opts.RepoPath, err)
+		}
 	}
 }
 
@@ -46,7 +54,7 @@ func ProcessSubdirectories(opts CleanupOptions) error {
 			err := ProcessSingleRepository(CleanupOptions{RepoPath: subRepoPath, AllFlag: false, DropChanges: opts.DropChanges})
 			if err != nil {
 				// Log the error but continue processing other repositories
-				fmt.Printf("Error processing repository %s: %s\n", subRepoPath, err)
+				return fmt.Errorf(" %s: %w", subRepoPath, err)
 			}
 		}
 	}
@@ -61,16 +69,34 @@ func ProcessSingleRepository(opts CleanupOptions) error {
 	repoName, err := utils.GetRepoName(opts.RepoPath)
 	if err != nil {
 		statusMessage := fmt.Sprintf("%s: getting repoName", opts.RepoPath)
-		fmt.Printf("\r%s failed [%s]: %s \n", statusMessage, red("x"), red(err.Error()))
+		return fmt.Errorf("\r%s failed [%s]: %w", statusMessage, red("x"), err)
 	}
 
 	statusMessage := fmt.Sprintf("%s: Cleaning up repo", repoName)
 	done := make(chan bool)
 	go utils.ShowSpinner(statusMessage, done)
 
-	changes := checkForChanges(opts.RepoPath, opts.DropChanges)
+	changes, err := checkForChanges(opts.RepoPath, opts.DropChanges)
+	if err != nil {
+		done <- true
+		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(changes))
+		return nil
+	}
 
-	currentBranch, prunedBranches, branchesCount := updateBranches(opts.RepoPath)
+	repo, err := git.PlainOpen(opts.RepoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	prunedBranches, branchesCount, err := updateBranches(repo)
+	if err != nil {
+		return fmt.Errorf("failed to update branches: %w", err)
+	}
+
+	currentBranch, err := utils.GetBranchName(repo)
+	if err != nil {
+		return fmt.Errorf("failed to get current branch: %w", err)
+	}
 
 	statusLine := constructStatusLine(changes, currentBranch, prunedBranches, branchesCount)
 	done <- true
@@ -81,22 +107,22 @@ func ProcessSingleRepository(opts CleanupOptions) error {
 }
 
 // checkForChanges handles resetting changes or listing uncommitted changes
-func checkForChanges(repoPath string, dropChanges bool) string {
+func checkForChanges(repoPath string, dropChanges bool) (string, error) {
 	var changes string
 
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("failed to open repository: %w", err)
 	}
 
 	wt, err := repo.Worktree()
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("failed to get worktree: %w", err)
 	}
 
 	status, err := wt.Status()
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("failed to get status for repository: %w", err)
 	}
 
 	if !status.IsClean() {
@@ -108,7 +134,7 @@ func checkForChanges(repoPath string, dropChanges bool) string {
 			changes = fmt.Sprintf("[%s] [%s] [%s] [%s]", color.YellowString("Modified: %d", modified), color.GreenString("Added: %d", added), color.RedString("Deleted: %d", deleted), color.BlueString("Untracked: %d", untracked))
 		}
 	}
-	return changes
+	return changes, nil
 }
 
 func CountChanges(status git.Status) (int, int, int, int) {
@@ -130,68 +156,77 @@ func CountChanges(status git.Status) (int, int, int, int) {
 	return modified, added, deleted, untracked
 }
 
-// updateBranches updates the main branch, prunes branches, and counts the branches
-func updateBranches(repoPath string) (string, int, int) {
-	repo, err := git.PlainOpen(repoPath)
-	if err != nil {
-		return "", 0, 0
-	}
+func updateBranches(repo *git.Repository) (int, int, error) {
 
-	wt, err := repo.Worktree()
-	if err != nil {
-		return "", 0, 0
-	}
-
-	// Set up SSH authentication
-	auth, err := utils.SshAuth()
-	if err != nil {
-		fmt.Printf("failed to set up SSH authentication: %s", err)
-	}
-
-	// Switch to main branch and update
-	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main"), Keep: true})
-	if err != nil {
-		return "", 0, 0
-	}
-
-	err = wt.Pull(&git.PullOptions{RemoteName: "origin", Progress: io.Discard, Auth: auth})
-	if err != nil && err != git.NoErrAlreadyUpToDate {
-		fmt.Printf("failed to pull: %s", err)
-		return "", 0, 0
-	}
-
-	// Get current branch
 	head, err := repo.Head()
 	if err != nil {
-		return "", 0, 0
+		return 0, 0, fmt.Errorf("failed to get HEAD: %w", err)
 	}
-	currentBranch := head.Name().Short()
 
-	// Prune branches merged into main
-	iter, _ := repo.Branches()
-	prunedCount, branchesCount := 0, 1
+	err = gitCommands.FetchRemote(repo)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to fetch remote: %w", err)
+	}
 
-	mainRef, _ := repo.Reference(plumbing.NewBranchReferenceName("main"), true)
-	mainCommit, _ := repo.CommitObject(mainRef.Hash())
+	headCommit, err := repo.CommitObject(head.Hash())
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get HEAD commit: %w", err)
+	}
 
-	iter.ForEach(func(ref *plumbing.Reference) error {
-		branchName := ref.Name().Short()
-		if branchName != "main" {
-			branchCommit, _ := repo.CommitObject(ref.Hash())
-			if isMerged, _ := mainCommit.IsAncestor(branchCommit); isMerged {
-				// Remove the branch reference
-				err := repo.Storer.RemoveReference(ref.Name())
-				if err == nil {
-					prunedCount++
-				} else {
-					fmt.Printf("failed to remove branch %s: %s\n", branchName, err)
-				}
-			} else {
-				branchesCount++
+	branches, err := repo.Branches()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get branches: %w", err)
+	}
+
+	protectedBranches := map[string]bool{
+		"main": true,
+	}
+
+	err = branches.ForEach(func(ref *plumbing.Reference) error {
+		branchName := strings.TrimPrefix(ref.Name().String(), "refs/heads/")
+
+		if protectedBranches[branchName] {
+			return nil
+		}
+
+		branchCommit, err := repo.CommitObject(ref.Hash())
+		if err != nil {
+			return fmt.Errorf("error getting commit for branch %s: %w", branchName, err)
+		}
+
+		merged, err := isMerged(headCommit, branchCommit)
+		if err != nil {
+			return fmt.Errorf("error checking if branch %s is merged: %w", branchName, err)
+		}
+
+		if merged {
+			err := repo.Storer.RemoveReference(ref.Name())
+			if err != nil {
+				return fmt.Errorf("failed to delete branch %s: %w", branchName, err)
 			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("error iterating branches: %s", err)
+	}
+	return 0, 0, nil
+}
+
+// isMerged checks if branchCommit is an ancestor of headCommit
+func isMerged(headCommit, branchCommit *object.Commit) (bool, error) {
+	commitIter := object.NewCommitPreorderIter(headCommit, nil, nil)
+	found := false
+	err := commitIter.ForEach(func(c *object.Commit) error {
+		if c.Hash == branchCommit.Hash {
+			found = true
+			return fmt.Errorf("found")
 		}
 		return nil
 	})
-
-	return currentBranch, prunedCount, branchesCount
+	if err != nil && err.Error() != "found" {
+		return false, err
+	}
+	return found, nil
 }

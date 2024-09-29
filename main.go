@@ -129,7 +129,7 @@ func commitCmd() *cobra.Command {
 
 			err := commit.CommitChanges(repoPath, branch, commitMessage)
 			if err != nil {
-				return
+				fmt.Println(err)
 			}
 		},
 	}
@@ -191,7 +191,7 @@ func pullRequestCmd() *cobra.Command {
 			// Run the commit and pull request process
 			err := pull_request.CommitAndPull(repoPath, branch, commitMessage, target, typeOfChanges, breakingChange, allFlag)
 			if err != nil {
-				return
+				fmt.Println(err)
 			}
 		},
 	}
@@ -221,14 +221,11 @@ func cleanupCmd() *cobra.Command {
 				repoPath, _ = os.Getwd()
 			}
 
-			err := cleanup.Cleanup(cleanup.CleanupOptions{
+			cleanup.Cleanup(cleanup.CleanupOptions{
 				RepoPath:    repoPath,
 				AllFlag:     allFlag,
 				DropChanges: dropChanges,
 			})
-			if err != nil {
-				fmt.Println(err)
-			}
 		},
 	}
 
