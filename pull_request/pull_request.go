@@ -85,8 +85,8 @@ func ProcessSingleRepository(repoPath, branchName, commitMessage, base string, c
 	}
 
 	done <- true
-	statusMessage = fmt.Sprintf("%s: created pull reques at %s", repoName, location)
-	fmt.Printf("\r%s [%s] \n", statusMessage, green("✔"))
+	statusMessage = fmt.Sprintf("%s: created pull request", repoName)
+	fmt.Printf("\r%s [%s]: %s\n", statusMessage, green("✔"), location)
 	return nil
 }
 
