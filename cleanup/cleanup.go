@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/CheeziCrew/swissgit/utils"
+	"github.com/CheeziCrew/swissgit/utils/gitCommands"
 	"github.com/fatih/color"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -167,7 +168,10 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 		return 0, 0, fmt.Errorf("failed to checkout main branch: %w", err)
 	}
 
-	cmd := exec.Command("git", "branch", "--merged")
+	gitCommands.FetchRemote(repo)
+	gitCommands.PullChanges(wt)
+
+	cmd := exec.Command("git", "branch", "--merged main")
 	output, err := cmd.Output()
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get merged branches: %w", err)
