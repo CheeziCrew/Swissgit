@@ -102,7 +102,6 @@ func checkForChanges(repoPath string, dropChanges bool) string {
 	if !status.IsClean() {
 		if dropChanges {
 			_ = wt.Reset(&git.ResetOptions{Mode: git.HardReset})
-			_ = wt.Clean(&git.CleanOptions{Dir: true})
 			changes = color.RedString("Dropped all changes")
 		} else {
 			modified, added, deleted, untracked := CountChanges(status)
