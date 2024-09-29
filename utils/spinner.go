@@ -17,7 +17,7 @@ func ShowSpinner(repoName string, done chan bool) {
 			return
 		default:
 			// Update the spinner
-			fmt.Printf("\r%s [%c] ", repoName, spinnerChars[i%len(spinnerChars)]) // Extra space to cover up leftovers
+			fmt.Printf("\r%s [%c]", repoName, spinnerChars[i%len(spinnerChars)]) // Extra space to cover up leftovers
 			i++
 			time.Sleep(100 * time.Millisecond)
 		}
