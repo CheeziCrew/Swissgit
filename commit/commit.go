@@ -30,7 +30,6 @@ func CommitChanges(repoPath, branchName, commitMessage string) error {
 		return err
 	}
 
-	// Success
 	done <- true
 	green := color.New(color.FgGreen).SprintFunc()
 	statusMessage = fmt.Sprintf("%s: committed and pushed to remote", repoName)
