@@ -85,8 +85,8 @@ func ProcessSingleRepository(repoPath, branchName, commitMessage, base string, c
 	}
 
 	done <- true
-	statusMessage = fmt.Sprintf("%s: created pull reques at %s", repoName, location)
-	fmt.Printf("\r%s [%s] \n", statusMessage, green("✔"))
+	statusMessage = fmt.Sprintf("%s: created pull request", repoName)
+	fmt.Printf("\r%s [%s]: %s\n", statusMessage, green("✔"), location)
 	return nil
 }
 
@@ -149,5 +149,5 @@ func CreatePullRequest(repoPath, commitMessage, branch, base string, changes []s
 	if err != nil {
 		return "", fmt.Errorf("failed to get location header: %w", err)
 	}
-	return location.Path, nil
+	return location.String(), nil
 }

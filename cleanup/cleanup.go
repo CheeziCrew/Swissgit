@@ -3,15 +3,14 @@ package cleanup
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/CheeziCrew/swissgit/utils"
-	"github.com/CheeziCrew/swissgit/utils/gitCommands"
 	"github.com/fatih/color"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // CleanupOptions holds the configuration for the cleanup process
@@ -165,78 +164,36 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 
 	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main"), Keep: true})
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to checkout main: %w", err)
+		return 0, 0, fmt.Errorf("failed to checkout main branch: %w", err)
 	}
 
-	head, err := repo.Head()
+	cmd := exec.Command("git", "branch", "--merged")
+	output, err := cmd.Output()
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get HEAD: %w", err)
+		return 0, 0, fmt.Errorf("failed to get merged branches: %w", err)
 	}
 
-	err = gitCommands.FetchRemote(repo)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to fetch remote: %w", err)
-	}
-
-	headCommit, err := repo.CommitObject(head.Hash())
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get HEAD commit: %w", err)
-	}
-
-	branches, err := repo.Branches()
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get branches: %w", err)
-	}
-
+	branches := strings.Split(string(output), "\n")
 	protectedBranches := map[string]bool{
 		"main": true,
 	}
 
-	err = branches.ForEach(func(ref *plumbing.Reference) error {
-		branchName := strings.TrimPrefix(ref.Name().String(), "refs/heads/")
-
-		if protectedBranches[branchName] {
-			return nil
+	var branchesToDelete []string
+	for _, branch := range branches {
+		branch = strings.TrimSpace(branch)
+		if branch == "" || protectedBranches[branch] {
+			continue
 		}
-
-		branchCommit, err := repo.CommitObject(ref.Hash())
-		if err != nil {
-			return fmt.Errorf("error getting commit for branch %s: %w", branchName, err)
-		}
-
-		merged, err := isMerged(headCommit, branchCommit)
-		if err != nil {
-			return fmt.Errorf("error checking if branch %s is merged: %w", branchName, err)
-		}
-
-		if merged {
-			err := repo.Storer.RemoveReference(ref.Name())
-			if err != nil {
-				return fmt.Errorf("failed to delete branch %s: %w", branchName, err)
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return 0, 0, fmt.Errorf("error iterating branches: %s", err)
+		branchesToDelete = append(branchesToDelete, branch)
 	}
-	return 0, 0, nil
-}
 
-// isMerged checks if branchCommit is an ancestor of headCommit
-func isMerged(headCommit, branchCommit *object.Commit) (bool, error) {
-	commitIter := object.NewCommitPreorderIter(headCommit, nil, nil)
-	found := false
-	err := commitIter.ForEach(func(c *object.Commit) error {
-		if c.Hash == branchCommit.Hash {
-			found = true
-			return fmt.Errorf("found")
+	if len(branchesToDelete) > 0 {
+		cmd = exec.Command("git", append([]string{"branch", "-d"}, branchesToDelete...)...)
+		_, err = cmd.CombinedOutput()
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed to delete branches: %w", err)
 		}
-		return nil
-	})
-	if err != nil && err.Error() != "found" {
-		return false, err
 	}
-	return found, nil
+	return len(branchesToDelete), len(branches) - len(branchesToDelete), nil
+
 }
