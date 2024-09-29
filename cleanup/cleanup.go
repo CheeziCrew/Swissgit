@@ -149,8 +149,16 @@ func updateBranches(repoPath string) (string, int, int) {
 	}
 
 	// Switch to main branch and update
-	_ = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main"), Keep: true})
-	wt.Pull(&git.PullOptions{RemoteName: "origin", Progress: io.Discard, Auth: auth})
+	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main"), Keep: true})
+	if err != nil {
+		return "", 0, 0
+	}
+
+	err = wt.Pull(&git.PullOptions{RemoteName: "origin", Progress: io.Discard, Auth: auth})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		fmt.Printf("failed to pull: %s", err)
+		return "", 0, 0
+	}
 
 	// Get current branch
 	head, err := repo.Head()
@@ -167,11 +175,17 @@ func updateBranches(repoPath string) (string, int, int) {
 	mainCommit, _ := repo.CommitObject(mainRef.Hash())
 
 	iter.ForEach(func(ref *plumbing.Reference) error {
-		if ref.Name().Short() != "main" {
+		branchName := ref.Name().Short()
+		if branchName != "main" {
 			branchCommit, _ := repo.CommitObject(ref.Hash())
 			if isMerged, _ := mainCommit.IsAncestor(branchCommit); isMerged {
-				_ = repo.Storer.RemoveReference(ref.Name())
-				prunedCount++
+				// Remove the branch reference
+				err := repo.Storer.RemoveReference(ref.Name())
+				if err == nil {
+					prunedCount++
+				} else {
+					fmt.Printf("failed to remove branch %s: %s\n", branchName, err)
+				}
 			} else {
 				branchesCount++
 			}
