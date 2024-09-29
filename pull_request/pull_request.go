@@ -77,40 +77,42 @@ func ProcessSingleRepository(repoPath, branchName, commitMessage, base string, c
 	done := make(chan bool)
 	go utils.ShowSpinner(statusMessage, done)
 
-	if err := CreatePullRequest(repoPath, commitMessage, branchName, base, changes, breakingChange); err != nil {
+	location, err := CreatePullRequest(repoPath, commitMessage, branchName, base, changes, breakingChange)
+	if err != nil {
 		done <- true
 		fmt.Printf("\r%s failed [✗]: %s \n", statusMessage, red(err.Error()))
 		return err
 	}
 
 	done <- true
+	statusMessage = fmt.Sprintf("%s: created pull reques at %s", repoName, location)
 	fmt.Printf("\r%s [%s] \n", statusMessage, green("✔"))
 	return nil
 }
 
 // CreatePullRequest creates a new pull request on GitHub
-func CreatePullRequest(repoPath, commitMessage, branch, base string, changes []string, breakingChange bool) error {
+func CreatePullRequest(repoPath, commitMessage, branch, base string, changes []string, breakingChange bool) (string, error) {
 
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
-		return fmt.Errorf("could not open repository at %s: %w", repoPath, err)
+		return "", fmt.Errorf("could not open repository at %s: %w", repoPath, err)
 	}
 
 	owner, repoName, err := utils.GetRepoOwnerAndName(repo)
 	if err != nil {
-		return fmt.Errorf("could not detect repository owner and name: %w", err)
+		return "", fmt.Errorf("could not detect repository owner and name: %w", err)
 	}
 
 	accessToken := os.Getenv("GITHUB_TOKEN")
 	if accessToken == "" {
-		return fmt.Errorf("GitHub access token not provided. Make sure to set the GITHUB_TOKEN environment variable")
+		return "", fmt.Errorf("GitHub access token not provided. Make sure to set the GITHUB_TOKEN environment variable")
 	}
 
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls", owner, repoName)
 
 	body, err := BuildPullRequestBody(changes, breakingChange)
 	if err != nil {
-		return fmt.Errorf("failed to build pull request body: %w", err)
+		return "", fmt.Errorf("failed to build pull request body: %w", err)
 	}
 
 	pr := PullRequest{
@@ -122,13 +124,13 @@ func CreatePullRequest(repoPath, commitMessage, branch, base string, changes []s
 
 	jsonData, err := json.Marshal(pr)
 	if err != nil {
-		return fmt.Errorf("failed to encode pull request data: %w", err)
+		return "", fmt.Errorf("failed to encode pull request data: %w", err)
 	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
+		return "", fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "token "+accessToken)
@@ -136,12 +138,16 @@ func CreatePullRequest(repoPath, commitMessage, branch, base string, changes []s
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
+		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("failed to create pull request, status: %s", resp.Status)
+		return "", fmt.Errorf("failed to create pull request, status: %s", resp.Status)
 	}
-	return nil
+	location, err := resp.Location()
+	if err != nil {
+		return "", fmt.Errorf("failed to get location header: %w", err)
+	}
+	return location.Path, nil
 }
