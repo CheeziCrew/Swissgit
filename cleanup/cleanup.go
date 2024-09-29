@@ -185,7 +185,14 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 	var branchesToDelete []string
 	for _, branch := range branches {
 		branch = strings.TrimSpace(branch)
-		if branch == "" || protectedBranches[branch] {
+		if branch == "" {
+			continue
+		}
+		// Remove leading '*' if present
+		if strings.HasPrefix(branch, "*") {
+			branch = strings.TrimSpace(branch[1:])
+		}
+		if protectedBranches[branch] {
 			continue
 		}
 		branchesToDelete = append(branchesToDelete, branch)
@@ -198,6 +205,7 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 			return 0, 0, fmt.Errorf("failed to delete branches: %w", err)
 		}
 	}
-	return len(branchesToDelete), len(branches) - len(branchesToDelete), nil
+
+	return len(branchesToDelete), len(branches), nil
 
 }

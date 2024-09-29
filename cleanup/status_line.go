@@ -13,7 +13,7 @@ func constructStatusLine(changes, currentBranch string, prunedBranches, branches
 	if changes != "" {
 		statusLine += color.BlueString("[Non Committed Changes: %s]", changes)
 	}
-	if branchesCount != 1 {
+	if branchesCount-1 != 1 {
 		statusLine += color.RedString("[Too many branches: %d]", branchesCount)
 	}
 	if currentBranch != "main" {
