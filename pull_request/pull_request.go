@@ -149,5 +149,5 @@ func CreatePullRequest(repoPath, commitMessage, branch, base string, changes []s
 	if err != nil {
 		return "", fmt.Errorf("failed to get location header: %w", err)
 	}
-	return location.Path, nil
+	return location.String(), nil
 }
