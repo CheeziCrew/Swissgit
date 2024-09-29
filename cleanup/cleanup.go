@@ -171,7 +171,7 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 	gitCommands.FetchRemote(repo)
 	gitCommands.PullChanges(wt)
 
-	cmd := exec.Command("git", "branch", "--merged main")
+	cmd := exec.Command("git", "branch", "--merged")
 	output, err := cmd.Output()
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get merged branches: %w", err)
