@@ -30,11 +30,10 @@ func CommitChanges(repoPath, branchName, commitMessage string) error {
 		return err
 	}
 
-	// Success
 	done <- true
 	green := color.New(color.FgGreen).SprintFunc()
 	statusMessage = fmt.Sprintf("%s: committed and pushed to remote", repoName)
-	fmt.Printf("\r%s [%s]", statusMessage, green("✔"))
+	fmt.Printf("\r%s [%s] ---", statusMessage, green("✔"))
 	return nil
 }
 
@@ -49,7 +48,8 @@ func commitAndPush(repoPath, branchName, commitMessage string) error {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 	// Add all changes (equivalent to `git add .`)
-	if err := worktree.AddGlob("."); err != nil {
+	err = worktree.AddGlob(".")
+	if err != nil {
 		return fmt.Errorf("failed to add files: %w", err)
 	}
 

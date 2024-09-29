@@ -27,7 +27,6 @@ func createNewBranch(repoPath string, branchName string, worktree *git.Worktree)
 	if err != nil {
 		return fmt.Errorf("failed to create and check out branch: %w", err)
 	}
-
 	// Apply the stash
 	cmd = exec.Command("git", "-C", repoPath, "stash", "pop")
 	cmd.Stdout = io.Discard
