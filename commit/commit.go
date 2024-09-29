@@ -49,9 +49,7 @@ func commitAndPush(repoPath, branchName, commitMessage string) error {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 	// Add all changes (equivalent to `git add .`)
-	if err := worktree.AddGlob("."); err != nil {
-		return fmt.Errorf("failed to add files: %w", err)
-	}
+	worktree.AddGlob(".")
 
 	gc.PullChanges(worktree)
 
