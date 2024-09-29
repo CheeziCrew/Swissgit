@@ -14,7 +14,6 @@ func ShowSpinner(repoName string, done chan bool) {
 		select {
 		case <-done:
 			// Clear the spinner line
-			fmt.Printf("\033[2K\r")
 			return
 		default:
 			// Update the spinner
