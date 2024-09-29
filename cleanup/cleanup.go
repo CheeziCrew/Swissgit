@@ -158,6 +158,16 @@ func CountChanges(status git.Status) (int, int, int, int) {
 
 func updateBranches(repo *git.Repository) (int, int, error) {
 
+	wt, err := repo.Worktree()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main"), Keep: true})
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to checkout main: %w", err)
+	}
+
 	head, err := repo.Head()
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get HEAD: %w", err)
