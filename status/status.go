@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/CheeziCrew/swissgo/utils"
-	gc "github.com/CheeziCrew/swissgo/utils/gitCommands"
+	"github.com/CheeziCrew/swissgit/utils"
+	gc "github.com/CheeziCrew/swissgit/utils/gitCommands"
 
 	"github.com/fatih/color"
 	"github.com/go-git/go-git/v5"
