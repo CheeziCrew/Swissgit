@@ -171,10 +171,20 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 	gitCommands.FetchRemote(repo)
 	gitCommands.PullChanges(wt)
 
+	parentDir, err := os.Getwd()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	err = os.Chdir(wt.Filesystem.Root())
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to change directory to repo: %w", err)
+	}
+
 	cmd := exec.Command("git", "branch", "--merged")
 	output, err := cmd.Output()
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to get merged branches: %w", err)
+		return 0, 0, fmt.Errorf("failed to get merged branches: %w, output: %s", err, output)
 	}
 
 	branches := strings.Split(string(output), "\n")
@@ -205,6 +215,8 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 			return 0, 0, fmt.Errorf("failed to delete branches: %w", err)
 		}
 	}
+
+	os.Chdir(parentDir)
 
 	return len(branchesToDelete), len(branches), nil
 
