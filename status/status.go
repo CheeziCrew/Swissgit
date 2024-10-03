@@ -38,7 +38,7 @@ func CheckStatus(repoPath string, verbose bool) bool {
 	}
 
 	// Get the branch name
-	branch, err := getBranchName(repo)
+	branch, err := utils.GetBranchName(repo)
 	if err != nil {
 		errMsg := fmt.Sprintf("%s: Could not get branch name:", filepath.Base(repoPath))
 		fmt.Printf("\r%s [%s]: %s\n", errMsg, red("x"), err)
