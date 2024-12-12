@@ -36,14 +36,9 @@ func CommitChanges(repoPath, branchName, commitMessage string) error {
 		return fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	apiOk := verifyApi(repo, repoName, statusMessage, done)
-	if !apiOk {
-		return nil
-	}
-
 	if err := commitAndPush(repo, repoPath, branchName, commitMessage); err != nil {
 		done <- true
-		fmt.Printf("\r%s failed [%s]: %s", statusMessage, red("x"), red(err.Error()))
+		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(err.Error()))
 		return err
 	}
 
