@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/CheeziCrew/swissgit/automerge"
 	"github.com/CheeziCrew/swissgit/branches"
 	"github.com/CheeziCrew/swissgit/cleanup"
 	"github.com/CheeziCrew/swissgit/clone"
@@ -49,6 +50,63 @@ func main() {
 	rootCmd.AddCommand(commitCmd())
 	rootCmd.AddCommand(pullRequestCmd())
 	rootCmd.AddCommand(cleanupCmd())
+	rootCmd.AddCommand(autoMergeCmd())
+
+	// Add the completion command
+	var completionCmd = &cobra.Command{
+		Use:   "completion [bash|zsh|fish|powershell]",
+		Short: "Generate completion script",
+		Long: `To load completions:
+
+Bash:
+
+$ source <(swissgit completion bash)
+
+# To load completions for each session, execute once:
+Linux:
+  $ swissgit completion bash > /etc/bash_completion.d/swissgit
+MacOS:
+  $ swissgit completion bash > /usr/local/etc/bash_completion.d/swissgit
+
+Zsh:
+
+$ source <(swissgit completion zsh)
+
+# To load completions for each session, execute once:
+$ swissgit completion zsh > "${fpath[1]}/_swissgit"
+
+Fish:
+
+$ swissgit completion fish | source
+
+# To load completions for each session, execute once:
+$ swissgit completion fish > ~/.config/fish/completions/swissgit.fish
+
+Powershell:
+
+PS> swissgit completion powershell | Out-String | Invoke-Expression
+
+# To load completions for every new session, run:
+PS> swissgit completion powershell > swissgit.ps1
+Add-Content $PROFILE "swissgit.ps1"
+`,
+		Args:      cobra.ExactValidArgs(1),
+		ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
+		Run: func(cmd *cobra.Command, args []string) {
+			switch args[0] {
+			case "bash":
+				rootCmd.GenBashCompletion(os.Stdout)
+			case "zsh":
+				rootCmd.GenZshCompletion(os.Stdout)
+			case "fish":
+				rootCmd.GenFishCompletion(os.Stdout, true)
+			case "powershell":
+				rootCmd.GenPowerShellCompletionWithDesc(os.Stdout)
+			}
+		},
+	}
+
+	rootCmd.AddCommand(completionCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -231,6 +289,32 @@ func cleanupCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&repoPath, "path", "p", "", "Path to the repository (optional, defaults to current directory)")
 	cmd.Flags().BoolVarP(&dropChanges, "drop", "d", false, "Drop all changes in the repository")
+	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Recursively scan one level of subdirectories for repositories")
+
+	return cmd
+}
+
+func autoMergeCmd() *cobra.Command {
+	var repoPath string
+	var target string
+	var allFlag bool
+
+	cmd := &cobra.Command{
+		Use:   "automerge",
+		Short: "Enable auto merge for branches",
+		Run: func(cmd *cobra.Command, args []string) {
+			if repoPath == "" {
+				repoPath, _ = os.Getwd()
+			}
+			err := automerge.HandleAutoMerge(target, repoPath, allFlag)
+			if err != nil {
+				fmt.Println(err)
+			}
+		},
+	}
+
+	cmd.Flags().StringVarP(&repoPath, "path", "p", "", "Path to the repository (optional, defaults to current directory)")
+	cmd.Flags().StringVarP(&target, "target", "t", "", "The target for pull requests to have auto merge enabled")
 	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Recursively scan one level of subdirectories for repositories")
 
 	return cmd
