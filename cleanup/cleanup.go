@@ -38,7 +38,7 @@ func Cleanup(opts CleanupOptions) {
 
 func ProcessSubdirectories(opts CleanupOptions) error {
 	entries, err := os.ReadDir(opts.RepoPath)
-	if err != nil {
+	if (err != nil) {
 		return fmt.Errorf("failed to read directory: %w", err)
 	}
 
@@ -69,7 +69,8 @@ func ProcessSingleRepository(opts CleanupOptions) error {
 	repoName, err := utils.GetRepoName(opts.RepoPath)
 	if err != nil {
 		statusMessage := fmt.Sprintf("%s: getting repoName", opts.RepoPath)
-		return fmt.Errorf("\r%s failed [%s]: %w", statusMessage, red("x"), err)
+		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(err))
+		return nil
 	}
 
 	statusMessage := fmt.Sprintf("%s: Cleaning up repo", repoName)
@@ -79,23 +80,29 @@ func ProcessSingleRepository(opts CleanupOptions) error {
 	changes, err := checkForChanges(opts.RepoPath, opts.DropChanges)
 	if err != nil {
 		done <- true
-		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(changes))
+		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(err))
 		return nil
 	}
 
 	repo, err := git.PlainOpen(opts.RepoPath)
 	if err != nil {
-		return fmt.Errorf("failed to open repository: %w", err)
+		done <- true
+		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(err))
+		return nil
 	}
 
 	prunedBranches, branchesCount, err := updateBranches(repo)
 	if err != nil {
-		return fmt.Errorf("failed to update branches: %w", err)
+		done <- true
+		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(err))
+		return nil
 	}
 
 	currentBranch, err := utils.GetBranchName(repo)
 	if err != nil {
-		return fmt.Errorf("failed to get current branch: %w", err)
+		done <- true
+		fmt.Printf("\r%s failed [%s]: %s\n", statusMessage, red("x"), red(err))
+		return nil
 	}
 
 	statusLine := constructStatusLine(changes, currentBranch, prunedBranches, branchesCount)
