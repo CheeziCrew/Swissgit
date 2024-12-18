@@ -148,7 +148,7 @@ Swiss Git provides several commands to manage your repositories:
 ## Documentation
 
 ### Automerge Command
-The `automerge` command enables automerge of a pull request in a repository. Currently relies on github CLI to perform the action. No recursive action available at the momement.
+The `automerge` command enables automerge of a pull request in a repository. Currently relies on github CLI to perform the action
 
 ### Status Command
 
