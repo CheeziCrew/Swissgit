@@ -85,6 +85,7 @@ You can download the latest binaries from the [Releases](https://github.com/Chee
 
 Swiss Git provides several commands to manage your repositories:
 
+- **automerge**: Enable automerge for repository (currently requires github CLI)
 - **status**: Check the status of repositories.
 - **branches**: List local, remote, and stale branches in the repository.
 - **clone**: Clone a repository or all repositories from a GitHub organization.
@@ -93,6 +94,12 @@ Swiss Git provides several commands to manage your repositories:
 - **cleanup**: Reset changes, update the main branch, and prune branches.
 
 ### Example Commands
+
+- Enable automerge:
+
+  ```sh
+  swissgit automerge -t "Your PR Title"
+  ```
 
 - Check the status of repositories:
 
@@ -139,6 +146,9 @@ Swiss Git provides several commands to manage your repositories:
 - **Cleanup**: Reset changes, update branches, and prune old branches.
 
 ## Documentation
+
+### Automerge Command
+The `automerge` command enables automerge of a pull request in a repository. Currently relies on github CLI to perform the action. No recursive action available at the momement.
 
 ### Status Command
 
