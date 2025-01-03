@@ -1,17 +1,12 @@
 package commit
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 
 	"github.com/CheeziCrew/swissgit/utils"
 	gc "github.com/CheeziCrew/swissgit/utils/gitCommands"
-	"github.com/CheeziCrew/swissgit/utils/validation"
 	"github.com/fatih/color"
 	"github.com/go-git/go-git/v5"
 )
@@ -54,12 +49,15 @@ func commitAndPush(repo *git.Repository, repoPath, branchName, commitMessage str
 	if err != nil {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
-	err = worktree.AddGlob(".")
-	if err != nil {
+	// Use git command to add files, respecting .gitignore
+	cmd := exec.Command("git", "-C", repoPath, "add", ".")
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to add files: %w", err)
 	}
 
-	//gc.PullChanges(worktree)
+	gc.PullChanges(worktree)
 
 	status, err := worktree.Status()
 	if err != nil {
@@ -96,63 +94,4 @@ func commit(branchName, commitMessage, repoPath string) error {
 		return fmt.Errorf("failed to commit changes: %w", err)
 	}
 	return nil
-}
-
-func verifyApi(repo *git.Repository, repoName string, statusMessage string, done chan bool) bool {
-
-	resourceFileFound, openApiFileFound, versionTagChanged, err := validation.CheckForApiChange(repo)
-	if err != nil {
-		errMsg := fmt.Sprintf("%s: Could not check for API change:", filepath.Base(repoName))
-		fmt.Printf("\r%s [%s]: %s\n", errMsg, red("x"), err)
-		done <- true
-		return false
-	}
-
-	yellow := color.New(color.FgYellow).SprintFunc()
-
-	if resourceFileFound && !openApiFileFound {
-		done <- true
-		fmt.Print("\r")
-		fmt.Println(yellow(repoName + ": [Warning!] API specification is not up to date"))
-		if !getUserConfirmation() {
-			return false
-		}
-		fmt.Print("\r\n")
-		go utils.ShowSpinner(statusMessage, done)
-	}
-	if resourceFileFound && !versionTagChanged {
-		done <- true
-		fmt.Print("\r")
-		fmt.Println(yellow(repoName + ": [Warning!] It seems like a new API was added, but the pom.xml file was not updated"))
-		if !getUserConfirmation() {
-			return false
-		}
-		fmt.Print("\r\n")
-		go utils.ShowSpinner(statusMessage, done)
-	}
-	if resourceFileFound && !openApiFileFound && !versionTagChanged {
-		done <- true
-		fmt.Print("\r")
-		fmt.Println(yellow(repoName + ": [Warning!] The pom.xml file was changed, but the <version> tag was not updated"))
-		if !getUserConfirmation() {
-			return false
-		}
-		fmt.Print("\r\n")
-		go utils.ShowSpinner(statusMessage, done)
-	}
-	return true
-}
-
-func getUserConfirmation() bool {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Continue with the push? [Y/N]: ")
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(strings.ToUpper(input))
-	if input == "Y" || input == "YES" || input == "y" {
-		fmt.Print("[" + green("✔") + "]" + " Continuing with the push")
-		return true
-	} else {
-		fmt.Print("[" + red("x") + "]" + " Exiting the push")
-		return false
-	}
 }
