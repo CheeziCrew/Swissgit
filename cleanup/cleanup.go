@@ -38,7 +38,7 @@ func Cleanup(opts CleanupOptions) {
 
 func ProcessSubdirectories(opts CleanupOptions) error {
 	entries, err := os.ReadDir(opts.RepoPath)
-	if (err != nil) {
+	if err != nil {
 		return fmt.Errorf("failed to read directory: %w", err)
 	}
 
@@ -164,13 +164,13 @@ func CountChanges(status git.Status) (int, int, int, int) {
 }
 
 func updateBranches(repo *git.Repository) (int, int, error) {
-
 	wt, err := repo.Worktree()
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main"), Keep: true})
+	// Switch to main for cleanup
+	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main")})
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to checkout main branch: %w", err)
 	}
@@ -226,5 +226,4 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 	os.Chdir(parentDir)
 
 	return len(branchesToDelete), len(branches), nil
-
 }
