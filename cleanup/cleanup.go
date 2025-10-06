@@ -10,7 +10,7 @@ import (
 	"github.com/CheeziCrew/swissgit/utils"
 	"github.com/CheeziCrew/swissgit/utils/gitCommands"
 	"github.com/fatih/color"
-	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
@@ -138,7 +138,22 @@ func checkForChanges(repoPath string, dropChanges bool) (string, error) {
 			changes = color.RedString("Dropped all changes")
 		} else {
 			modified, added, deleted, untracked := CountChanges(status)
-			changes = fmt.Sprintf("[%s] [%s] [%s] [%s]", color.YellowString("Modified: %d", modified), color.GreenString("Added: %d", added), color.RedString("Deleted: %d", deleted), color.BlueString("Untracked: %d", untracked))
+			parts := []string{}
+			if modified > 0 {
+				parts = append(parts, color.YellowString("Modified: %d", modified))
+			}
+			if added > 0 {
+				parts = append(parts, color.GreenString("Added: %d", added))
+			}
+			if deleted > 0 {
+				parts = append(parts, color.RedString("Deleted: %d", deleted))
+			}
+			if untracked > 0 {
+				parts = append(parts, color.BlueString("Untracked: %d", untracked))
+			}
+			if len(parts) > 0 {
+				changes = "[" + strings.Join(parts, "] [") + "]"
+			}
 		}
 	}
 	return changes, nil
@@ -170,7 +185,10 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 	}
 
 	// Switch to main for cleanup
-	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName("main")})
+	err = wt.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName("main"),
+		Keep:   true, // preserve local modifications that would be overwritten
+	})
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to checkout main branch: %w", err)
 	}
@@ -200,8 +218,9 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 	}
 
 	var branchesToDelete []string
-	for _, branch := range branches {
-		branch = strings.TrimSpace(branch)
+	totalLocalBranches := 0
+	for _, raw := range branches {
+		branch := strings.TrimSpace(raw)
 		if branch == "" {
 			continue
 		}
@@ -209,6 +228,9 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 		if strings.HasPrefix(branch, "*") {
 			branch = strings.TrimSpace(branch[1:])
 		}
+		// Count all non-empty local branches
+		totalLocalBranches++
+		// Schedule deletion only for non-protected branches
 		if protectedBranches[branch] {
 			continue
 		}
@@ -225,5 +247,9 @@ func updateBranches(repo *git.Repository) (int, int, error) {
 
 	os.Chdir(parentDir)
 
-	return len(branchesToDelete), len(branches), nil
+	remainingBranches := totalLocalBranches - len(branchesToDelete)
+	if remainingBranches < 0 {
+		remainingBranches = 0
+	}
+	return len(branchesToDelete), remainingBranches, nil
 }

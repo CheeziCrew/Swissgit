@@ -194,7 +194,7 @@ func commitCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&repoPath, "path", "p", ".", "Path to the repository (optional, defaults to current directory)")
 	cmd.Flags().StringVarP(&commitMessage, "message", "m", "", "Commit message")
-	cmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch to create and push changes to before creating the pull request (optional, defaults to current branch)")
+	cmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch to create and push changes to before creating the commit(optional, defaults to current branch)")
 	cmd.MarkFlagRequired("message")
 	return cmd
 }
@@ -244,7 +244,7 @@ func pullRequestCmd() *cobra.Command {
 			fmt.Print("Is this a breaking change? [Y/N]: ")
 			input, _ = reader.ReadString('\n')
 			input = strings.TrimSpace(strings.ToUpper(input))
-			breakingChange = (input == "Y" || input == "YES" || input == "y")
+			breakingChange = input == "Y" || input == "YES" || input == "y"
 
 			// Run the commit and pull request process
 			err := pull_request.CommitAndPull(repoPath, branch, commitMessage, target, typeOfChanges, breakingChange, allFlag)
