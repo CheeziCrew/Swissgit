@@ -1,203 +1,63 @@
-# Swiss Git
+# SwissGit
 
 ![Untitled_Artwork_15](https://github.com/CheeziCrew/Swissgit/assets/110965999/0edfe55f-38a2-4d06-9c39-5b60ff7f5441)
 
-## Description
+Multi-repo Git workflows without the pain. Interactive TUI or fast CLI — your call.
 
-Swiss Git is a "comprehensive" tooling solution designed to streamline and simplify Git repository management, particularly when dealing with multiple repositories simultaneously.
+## Quick Start
 
-## Table of Contents
+Grab a binary from [Releases](https://github.com/CheeziCrew/swissgit/releases), or build it yourself:
 
-1. [Description](#description)
-2. [Table of Contents](#table-of-contents)
-3. [Requirements](#requirements)
-4. [Installation](#installation)
-5. [Usage](#usage)
-6. [Features](#features)
-7. [Documentation](#documentation)
-8. [Contributing](#contributing)
-9. [License](#license)
-10. [Acknowledgements](#acknowledgements)
-11. [Contact Information](#contact-information)
-12. [FAQs](#faqs)
+```sh
+go install github.com/CheeziCrew/swissgit@latest
+```
 
-## Requirements
+Drop a `.env` next to the binary:
 
-- Go 1.23 or higher
-- Git
-- SSH key set up on GitHub
-- GitHub personal access token
+```env
+GITHUB_TOKEN=ghp_...
+SSH_KEY=id_ed25519
+```
 
-## Installation
+Run `swissgit` for the TUI, or pass a command for CLI mode.
 
-### Using Released Binaries
+## TUI
 
-You can download the latest binaries from the [Releases](https://github.com/CheeziCrew/swissgit/releases) section on GitHub.
+```sh
+swissgit
+```
 
-1. Download the appropriate binary for your operating system.
-2. Extract the binary and place it in a directory included in your system's PATH.
+Full interactive terminal UI — navigate commands, pick repos, fill forms, watch progress. Adapts to your terminal's color theme (base16).
 
-### Building from Source
+## CLI
 
-1. Clone the repository:
+Every command works with `--all` / `-a` to hit all repos in subdirectories.
 
-   ```sh
-   git clone https://github.com/CheeziCrew/swissgit.git
-   cd swissgit
-   ```
+```sh
+swissgit status -a                      # What's dirty?
+swissgit branches -a                    # What branches exist?
+swissgit commit -m "fix stuff" -a       # Stage, commit, push everywhere
+swissgit pr -m "Title" -b feat-1 -a     # Create PRs across repos
+swissgit clone -o MyOrg -t my-team      # Clone org (skips archived repos)
+swissgit cleanup -a -d                  # Reset, pull main, prune branches
+swissgit automerge -t "PR title" -a     # Enable auto-merge (needs gh CLI)
+```
 
-2. Build the project:
+## Prerequisites
 
-   ```sh
-   go build
-   ```
+| What | Why | Required |
+|---|---|---|
+| Git | duh | Yes |
+| SSH key on GitHub | Clone/push over SSH | Yes |
+| `GITHUB_TOKEN` | PR creation, org clone, GitHub API | Yes |
+| [`gh` CLI](https://cli.github.com/) | Automerge only | Only for `automerge` |
 
-3. (Optional) Install the binary:
-   ```sh
-   go install
-   ```
-
-### Environment Setup
-
-1. Create a `.env` file in the root of the project:
-
-   ```sh
-   touch .env
-   ```
-
-2. Add your GitHub personal access token and SSH key name to the `.env` file:
-
-   ```env
-   GITHUB_TOKEN=your_github_token
-   SSH_KEY=your_ssh_key_name
-   ```
-
-   Example:
-
-   ```env
-   GITHUB_TOKEN=ghp_yourGitHubTokenHere
-   SSH_KEY=id_ed25519
-   ```
-
-3. Ensure your SSH key is set up on GitHub. You can follow the instructions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh).
-
-## Usage
-
-Swiss Git provides several commands to manage your repositories:
-
-- **automerge**: Enable automerge for repository (currently requires github CLI)
-- **status**: Check the status of repositories.
-- **branches**: List local, remote, and stale branches in the repository.
-- **clone**: Clone a repository or all repositories from a GitHub organization.
-- **commit**: Add all files, commit changes, and push to the remote repository.
-- **pullrequest**: Commit all changes and create a pull request on GitHub.
-- **cleanup**: Reset changes, update the main branch, and prune branches.
-
-### Example Commands
-
-- Enable automerge:
-
-  ```sh
-  swissgit automerge -t "Your PR Title"
-  ```
-
-- Check the status of repositories:
-
-  ```sh
-  swissgit status --all --path /path/to/repos --verbose
-  ```
-
-- List branches:
-
-  ```sh
-  swissgit branches --path /path/to/repo
-  ```
-
-- Clone all repositories in a organisation:
-
-  ```sh
-  swissgit clone --org CheeziCrew --path /path/to/folder/
-  ```
-
-- Commit changes:
-
-  ```sh
-  swissgit commit --message "Your commit message"
-  ```
-
-- Create multiple pull request:
-
-  ```sh
-  swissgit pullrequest --all --message "Your PR title" --branch feature-branch
-  ```
-
-- Cleanup repositories:
-  ```sh
-  swissgit cleanup --path /path/to/repo --drop
-  ```
-
-## Features
-
-- **Status Check**: Quickly check the status of multiple repositories.
-- **Branch Management**: List and manage local and remote branches.
-- **Repository Cloning**: Clone individual repositories or all repositories from an organization.
-- **Commit and Push**: Easily commit changes and push to remote repositories.
-- **Pull Requests**: Create pull requests directly from the command line.
-- **Cleanup**: Reset changes, update branches, and prune old branches.
-
-## Documentation
-
-### Automerge Command
-The `automerge` command enables automerge of a pull request in a repository. Currently relies on github CLI to perform the action
-
-### Status Command
-
-The `status` command checks the status of repositories. It can scan directories recursively if the `--all` flag is used.
-
-### Branches Command
-
-The `branches` command lists local, remote, and stale branches in the repository.
-
-### Clone Command
-
-The `clone` command clones a repository or all repositories from a GitHub organization.
-
-### Commit Command
-
-The `commit` command adds all files, commits changes, and pushes to the remote repository.
-
-### Pull Request Command
-
-The `pullrequest` command commits all changes and creates a pull request on GitHub.
-
-### Cleanup Command
-
-The `cleanup` command resets changes, updates the main branch, and prunes branches.
-
-## Contributing
-
-Feel free to create a pull request if you have suggestions on changes. Or create an issue if you find something that is behaving weirdly, have a question or suggestion.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE). You can find the full text of the license in the [LICENSE](LICENSE) file.
+The `.env` file is loaded from the binary's directory, not your CWD. If using `go run .`, export the vars in your shell instead.
 
 ## Acknowledgements
 
-- **Theo the Cat**: for moral support
+**Theo the Cat** — moral support department, head of naps division.
 
-Contribute in any way, shape or form and your name might end up here.
+## License
 
-## Contact Information
-
-For questions or concerns, contact [swissgittools@cheezi.se](mailto:swissgittools@cheezi.se) or create an issue here on GitHub.
-
-## FAQs
-
-**Q: Where the duck is the .exe?**
-
-A: Sorry we are developers here. We don't do .exes. Just kidding you find it under
-
-**Q: Are all my questions answered here?**
-
-A: Maybe. But feel free to ask anyway! We're here to help.
+[MIT](LICENSE)

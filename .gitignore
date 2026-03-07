@@ -20,8 +20,10 @@
 !README.md
 !LICENSE
 
-# !Makefile
+!.goreleaser.yml
 
 !.github/
+!*.yml
+
 # ...even if they are in subdirectories
 !*/

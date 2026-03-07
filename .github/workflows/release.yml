@@ -1,43 +1,46 @@
-# .github/workflows/release.yml
-name: goreleaser
+name: Release
 
 on:
-  pull_request:
-  workflow_dispatch:
   push:
-    # run only against tags
-    tags:
-      - "*"
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
-  # packages: write
-  # issues: write
-  # id-token: write
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
-      # More assembly might be required: Docker logins, GPG, etc.
-      # It all depends on your needs.
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Bump patch version and tag
+        id: tag
+        run: |
+          latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          version=${latest#v}
+          IFS='.' read -r major minor patch <<< "$version"
+          new_tag="v${major}.${minor}.$((patch + 1))"
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+          git tag "$new_tag"
+          git push origin "$new_tag"
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro'
           distribution: goreleaser
-          # 'latest', 'nightly', or a semver
           version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
