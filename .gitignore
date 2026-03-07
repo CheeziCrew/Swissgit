@@ -17,7 +17,7 @@
 !go.sum
 !go.mod
 
-!README.md
+!*.md
 !LICENSE
 
 !.goreleaser.yml
