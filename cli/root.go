@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/CheeziCrew/swissgit/git"
 	"github.com/CheeziCrew/swissgit/ops"
@@ -34,6 +35,8 @@ func BuildCLI() *cobra.Command {
 	root.AddCommand(branchesCLICmd())
 	root.AddCommand(cloneCLICmd())
 	root.AddCommand(automergeCLICmd())
+	root.AddCommand(mergePRsCLICmd())
+	root.AddCommand(enableWorkflowsCLICmd())
 
 	return root
 }
@@ -301,6 +304,115 @@ func automergeCLICmd() *cobra.Command {
 	cmd.Flags().StringVarP(&target, "target", "t", "", "PR search target")
 	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Process all repos")
 	cmd.MarkFlagRequired("target")
+
+	return cmd
+}
+
+// --- Merge PRs ---
+
+func mergePRsCLICmd() *cobra.Command {
+	var orgName string
+	var dryRun bool
+	var batchSize, waitMin int
+
+	cmd := &cobra.Command{
+		Use:   "merge-prs",
+		Short: "Merge approved pull requests in batches",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			merged, failed := 0, 0
+			batch := 0
+
+			for {
+				prs, err := ops.FetchApprovedPRs(orgName)
+				if err != nil {
+					return err
+				}
+				if len(prs) == 0 {
+					if batch == 0 {
+						fmt.Println("No approved PRs found.")
+					} else {
+						fmt.Println("\nNo more approved PRs.")
+					}
+					break
+				}
+
+				end := batchSize
+				if end > len(prs) {
+					end = len(prs)
+				}
+				batch++
+				fmt.Printf("\nBatch %d — %d approved PR(s), merging %d\n", batch, len(prs), end)
+
+				for _, pr := range prs[:end] {
+					name := fmt.Sprintf("%s #%d", pr.Repo, pr.Number)
+					if dryRun {
+						fmt.Printf(" %s %s %s\n", ok, name, dim.Render(pr.Title))
+						continue
+					}
+					result := ops.MergePR(orgName, pr.Repo, pr.Number)
+					printResult(name, result.Success, pr.Title, result.Error)
+					if result.Success {
+						merged++
+					} else {
+						failed++
+					}
+				}
+
+				if dryRun {
+					break
+				}
+
+				fmt.Printf("\nWaiting %d minutes before next batch…\n", waitMin)
+				time.Sleep(time.Duration(waitMin) * time.Minute)
+			}
+
+			if !dryRun && batch > 0 {
+				fmt.Printf("\n=== Summary ===\nMerged: %d\nFailed: %d\n", merged, failed)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", "GitHub org")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be merged")
+	cmd.Flags().IntVar(&batchSize, "batch-size", 5, "PRs per batch")
+	cmd.Flags().IntVar(&waitMin, "wait", 10, "Minutes between batches")
+
+	return cmd
+}
+
+// --- Enable Workflows ---
+
+func enableWorkflowsCLICmd() *cobra.Command {
+	var orgName, workflowName, prBranch string
+
+	cmd := &cobra.Command{
+		Use:   "enable-workflows",
+		Short: "Re-enable GitHub Actions disabled by inactivity",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			repos, err := ops.FetchOrgRepoNames(orgName)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Checking %d repos in %s\n", len(repos), orgName)
+			for _, repo := range repos {
+				result := ops.FindAndEnableWorkflows(orgName, repo, workflowName, prBranch)
+				var parts []string
+				if result.EnabledCount > 0 {
+					parts = append(parts, fmt.Sprintf("enabled %d", result.EnabledCount))
+				}
+				if result.RetriggeredPRs > 0 {
+					parts = append(parts, fmt.Sprintf("retriggered %d PR(s)", result.RetriggeredPRs))
+				}
+				printResult(repo, result.Success, strings.Join(parts, ", "), result.Error)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", "GitHub org")
+	cmd.Flags().StringVarP(&workflowName, "workflow", "w", "Call Java CI with Maven", "Workflow name to enable (empty = all)")
+	cmd.Flags().StringVar(&prBranch, "pr-branch", "", "Close/reopen PRs from this head branch to retrigger workflows")
 
 	return cmd
 }
