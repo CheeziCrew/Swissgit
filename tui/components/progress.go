@@ -3,10 +3,10 @@ package components
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // Base16 ANSI colors — respects terminal theme
@@ -71,10 +71,9 @@ type ProgressModel struct {
 func NewProgressModel(tasks []RepoTask) ProgressModel {
 	bar := progress.New(
 		progress.WithoutPercentage(),
+		progress.WithWidth(40),
+		progress.WithColors(lipgloss.Color("13"), lipgloss.Color("8")),
 	)
-	bar.Width = 40
-	bar.FullColor = "13" // bright magenta (ANSI)
-	bar.EmptyColor = "8" // gray (ANSI)
 
 	s := spinner.New()
 	s.Spinner = spinner.MiniDot
@@ -94,13 +93,14 @@ func (m ProgressModel) Init() tea.Cmd {
 func (m ProgressModel) Update(msg tea.Msg) (ProgressModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.bar.Width = msg.Width - 20
-		if m.bar.Width > 60 {
-			m.bar.Width = 60
+		w := msg.Width - 20
+		if w > 60 {
+			w = 60
 		}
-		if m.bar.Width < 20 {
-			m.bar.Width = 20
+		if w < 20 {
+			w = 20
 		}
+		m.bar.SetWidth(w)
 
 	case spinner.TickMsg:
 		if m.done {
@@ -111,8 +111,8 @@ func (m ProgressModel) Update(msg tea.Msg) (ProgressModel, tea.Cmd) {
 		return m, cmd
 
 	case progress.FrameMsg:
-		progressModel, cmd := m.bar.Update(msg)
-		m.bar = progressModel.(progress.Model)
+		var cmd tea.Cmd
+		m.bar, cmd = m.bar.Update(msg)
 		return m, cmd
 
 	case RepoTaskUpdateMsg:

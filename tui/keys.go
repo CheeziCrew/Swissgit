@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 // KeyMap defines shared keybindings across screens.
 type KeyMap struct {
@@ -37,7 +37,7 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("q", "quit"),
 	),
 	Toggle: key.NewBinding(
-		key.WithKeys(" "),
+		key.WithKeys("space"),
 		key.WithHelp("space", "toggle"),
 	),
 	All: key.NewBinding(

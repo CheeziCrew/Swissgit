@@ -30,7 +30,6 @@ type PRResult struct {
 
 // CommitAndCreatePR commits changes and creates a PR for a single repo.
 func CommitAndCreatePR(repoPath, branchName, commitMessage, base string, changes []string, breakingChange bool) PRResult {
-	// First commit and push
 	commitResult := CommitAndPush(repoPath, branchName, commitMessage)
 	if !commitResult.Success {
 		return PRResult{
@@ -39,7 +38,6 @@ func CommitAndCreatePR(repoPath, branchName, commitMessage, base string, changes
 		}
 	}
 
-	// Then create the PR
 	repo, err := gogit.PlainOpen(repoPath)
 	if err != nil {
 		return PRResult{RepoName: commitResult.RepoName, Error: fmt.Sprintf("could not open repo: %s", err)}

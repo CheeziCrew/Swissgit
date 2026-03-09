@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -55,6 +55,7 @@ type MergePRsModel struct {
 	progress  components.ProgressModel
 	viewport  viewport.Model
 	viewReady bool
+	height    int
 
 	// Batching state
 	batchSize  int
@@ -76,14 +77,10 @@ func NewMergePRsModel() MergePRsModel {
 		defaultOrg = "Sundsvallskommun"
 	}
 
-	oi := textinput.New()
-	oi.Placeholder = "GitHub org name"
+	oi := newStyledInput("GitHub org name")
 	oi.SetValue(defaultOrg)
 	oi.Focus()
 	oi.CharLimit = 100
-	oi.Width = 60
-	oi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	oi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
@@ -104,12 +101,13 @@ func (m MergePRsModel) Init() tea.Cmd {
 
 func (m MergePRsModel) Update(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.height = wsm.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(wsm.Width-6, wsm.Height-10)
+			m.viewport = viewport.New(viewport.WithWidth(wsm.Width-6), viewport.WithHeight(wsm.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = wsm.Width - 6
-			m.viewport.Height = wsm.Height - 10
+			m.viewport.SetWidth(wsm.Width - 6)
+			m.viewport.SetHeight(wsm.Height - 10)
 		}
 	}
 
@@ -130,7 +128,7 @@ func (m MergePRsModel) Update(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 
 func (m MergePRsModel) updateInput(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			val := m.orgInput.Value()
@@ -170,7 +168,6 @@ func (m MergePRsModel) updateFetching(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 		}
 
 		if len(msg.prs) == 0 {
-			// No more PRs — we're done
 			if len(m.allResults) == 0 {
 				m.allResults = append(m.allResults, components.RepoTask{
 					Name:   "search",
@@ -189,7 +186,7 @@ func (m MergePRsModel) updateFetching(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if key.Matches(msg, key.NewBinding(key.WithKeys("esc"))) {
 			return m.goToResults()
 		}
@@ -253,7 +250,6 @@ func (m MergePRsModel) updateProgress(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 		return m, cmd
 
 	case components.AllTasksDoneMsg:
-		// Collect batch results
 		for _, t := range m.progress.Tasks {
 			m.allResults = append(m.allResults, t)
 			switch t.Status {
@@ -264,14 +260,7 @@ func (m MergePRsModel) updateProgress(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 			}
 		}
 
-		// Check if there could be more PRs — re-fetch after wait
-		if len(m.prs) > m.batchSize {
-			// More known PRs remain, start waiting
-			return m, m.startWait()
-		}
-
-		// Might be more on the server (the fish script always re-fetches)
-		// Start wait to let CI breathe, then re-fetch
+		// Always wait + re-fetch — more PRs may appear server-side
 		return m, m.startWait()
 	}
 
@@ -293,22 +282,19 @@ func (m MergePRsModel) updateWaiting(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 	case mergeWaitTickMsg:
 		m.waitRemaining--
 		if m.waitRemaining <= 0 {
-			// Time's up — re-fetch
 			m.step = mergePRsStepFetching
 			return m, tea.Batch(m.spinner.Tick, m.fetchPRs())
 		}
 		return m, tea.Tick(time.Second, func(t time.Time) tea.Msg {
 			return mergeWaitTickMsg{}
 		})
-	case tea.KeyMsg:
-		msg := msg.(tea.KeyMsg)
+	case tea.KeyPressMsg:
+		msg := msg.(tea.KeyPressMsg)
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
-			// Skip wait — re-fetch now
 			m.step = mergePRsStepFetching
 			return m, tea.Batch(m.spinner.Tick, m.fetchPRs())
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
-			// Bail out — show what we've got
 			return m.goToResults()
 		}
 	}
@@ -324,7 +310,7 @@ func (m *MergePRsModel) goToResults() (MergePRsModel, tea.Cmd) {
 
 func (m MergePRsModel) updateResults(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q", "enter"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -345,8 +331,8 @@ func (m MergePRsModel) View() string {
 		var content string
 		content += prLabelStyle.Render("GitHub organization") + "\n"
 		content += m.orgInput.View()
-		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("enter search approved PRs  •  esc back")
+		s += inputBox.Render(content)
+		return s
 
 	case mergePRsStepFetching:
 		s += m.summaryView()
@@ -366,18 +352,14 @@ func (m MergePRsModel) View() string {
 		min := m.waitRemaining / 60
 		sec := m.waitRemaining % 60
 		waitStr := fmt.Sprintf("⏳ Waiting %d:%02d before next batch…", min, sec)
-		s += inputBox.Render(waitStr) + "\n\n"
-		s += menuHelpBox.Render("enter skip wait  •  esc/q finish early")
+		s += inputBox.Render(waitStr)
+		return s
 
 	case mergePRsStepResults:
 		if m.viewReady {
 			s += m.viewport.View() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

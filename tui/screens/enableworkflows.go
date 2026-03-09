@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -42,7 +42,7 @@ type EnableWorkflowsModel struct {
 	orgInput      textinput.Model
 	workflowInput textinput.Model
 	prBranchInput textinput.Model
-	focusIndex    int // 0=org, 1=workflow, 2=prPrefix
+	focusIndex    int
 
 	org          string
 	workflowName string
@@ -54,6 +54,7 @@ type EnableWorkflowsModel struct {
 	results   components.ResultModel
 	viewport  viewport.Model
 	viewReady bool
+	height    int
 }
 
 func NewEnableWorkflowsModel() EnableWorkflowsModel {
@@ -62,29 +63,17 @@ func NewEnableWorkflowsModel() EnableWorkflowsModel {
 		defaultOrg = "Sundsvallskommun"
 	}
 
-	oi := textinput.New()
-	oi.Placeholder = "GitHub org name"
+	oi := newStyledInput("GitHub org name")
 	oi.SetValue(defaultOrg)
 	oi.Focus()
 	oi.CharLimit = 100
-	oi.Width = 60
-	oi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	oi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
-	wi := textinput.New()
-	wi.Placeholder = "workflow name (empty = all disabled)"
+	wi := newStyledInput("workflow name (empty = all disabled)")
 	wi.SetValue("Call Java CI with Maven")
 	wi.CharLimit = 200
-	wi.Width = 60
-	wi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	wi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
-	pi := textinput.New()
-	pi.Placeholder = "head branch (empty = skip retrigger)"
+	pi := newStyledInput("head branch (empty = skip retrigger)")
 	pi.CharLimit = 200
-	pi.Width = 60
-	pi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	pi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
@@ -105,12 +94,13 @@ func (m EnableWorkflowsModel) Init() tea.Cmd {
 
 func (m EnableWorkflowsModel) Update(msg tea.Msg) (EnableWorkflowsModel, tea.Cmd) {
 	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.height = wsm.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(wsm.Width-6, wsm.Height-10)
+			m.viewport = viewport.New(viewport.WithWidth(wsm.Width-6), viewport.WithHeight(wsm.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = wsm.Width - 6
-			m.viewport.Height = wsm.Height - 10
+			m.viewport.SetWidth(wsm.Width - 6)
+			m.viewport.SetHeight(wsm.Height - 10)
 		}
 	}
 
@@ -129,7 +119,7 @@ func (m EnableWorkflowsModel) Update(msg tea.Msg) (EnableWorkflowsModel, tea.Cmd
 
 func (m EnableWorkflowsModel) updateInput(msg tea.Msg) (EnableWorkflowsModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("tab"))):
 			m.focusIndex = (m.focusIndex + 1) % 3
@@ -220,7 +210,7 @@ func (m EnableWorkflowsModel) updateFetching(msg tea.Msg) (EnableWorkflowsModel,
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if key.Matches(msg, key.NewBinding(key.WithKeys("esc"))) {
 			return m, func() tea.Msg { return BackToMenuMsg{} }
 		}
@@ -300,7 +290,7 @@ func (m EnableWorkflowsModel) updateProgress(msg tea.Msg) (EnableWorkflowsModel,
 
 func (m EnableWorkflowsModel) updateResults(msg tea.Msg) (EnableWorkflowsModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q", "enter"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -329,8 +319,8 @@ func (m EnableWorkflowsModel) View() string {
 			}
 			content += fmt.Sprintf("%s%s\n  %s\n\n", marker, prLabelStyle.Render(label), inputs[i])
 		}
-		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("tab switch field  •  enter run  •  esc back")
+		s += inputBox.Render(content)
+		return s
 
 	case enableWFStepFetching:
 		wfLabel := m.workflowName
@@ -370,11 +360,7 @@ func (m EnableWorkflowsModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

@@ -1,10 +1,10 @@
 package screens
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/CheeziCrew/swissgit/git"
 	"github.com/CheeziCrew/swissgit/ops"
@@ -45,7 +45,7 @@ func NewAutomergeModel() AutomergeModel {
 	ti.Placeholder = "PR search target (e.g. branch name)"
 	ti.Focus()
 	ti.CharLimit = 200
-	ti.Width = 60
+	ti.SetWidth(60)
 
 	return AutomergeModel{
 		step:        automergeStepTarget,
@@ -61,11 +61,11 @@ func (m AutomergeModel) Update(msg tea.Msg) (AutomergeModel, tea.Cmd) {
 	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
 		m.height = wsm.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(wsm.Width-6, wsm.Height-10)
+			m.viewport = viewport.New(viewport.WithWidth(wsm.Width-6), viewport.WithHeight(wsm.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = wsm.Width - 6
-			m.viewport.Height = wsm.Height - 10
+			m.viewport.SetWidth(wsm.Width - 6)
+			m.viewport.SetHeight(wsm.Height - 10)
 		}
 	}
 	switch m.step {
@@ -81,7 +81,7 @@ func (m AutomergeModel) Update(msg tea.Msg) (AutomergeModel, tea.Cmd) {
 
 func (m AutomergeModel) updateTarget(msg tea.Msg) (AutomergeModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			val := m.targetInput.Value()
@@ -174,7 +174,7 @@ func (m AutomergeModel) updateProgress(msg tea.Msg) (AutomergeModel, tea.Cmd) {
 
 func (m AutomergeModel) updateResults(msg tea.Msg) (AutomergeModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q", "enter"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -196,7 +196,7 @@ func (m AutomergeModel) View() string {
 		content += prLabelStyle.Render("PR head branch (exact match)") + "\n"
 		content += m.targetInput.View()
 		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("enter run on all repos  •  esc back")
+		return s
 
 	case automergeStepProgress:
 		s += summaryBlock(summaryLine("head", m.target))
@@ -208,11 +208,7 @@ func (m AutomergeModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

@@ -32,7 +32,6 @@ type CloneResult struct {
 func CloneRepository(repo Repository, destPath string) CloneResult {
 	result := CloneResult{RepoName: repo.Name}
 
-	// Skip if already cloned
 	if git.IsGitRepository(destPath) {
 		result.Skipped = true
 		result.Success = true

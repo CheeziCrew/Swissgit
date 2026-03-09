@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -46,6 +46,7 @@ type CloneModel struct {
 	results   components.ResultModel
 	viewport  viewport.Model
 	viewReady bool
+	height    int
 }
 
 func NewCloneModel() CloneModel {
@@ -53,25 +54,25 @@ func NewCloneModel() CloneModel {
 	ri.Placeholder = "repo SSH URL (or leave empty for org clone)"
 	ri.Focus()
 	ri.CharLimit = 300
-	ri.Width = 60
+	ri.SetWidth(60)
 
 	oi := textinput.New()
 	oi.Placeholder = "GitHub org name"
 	oi.SetValue("Sundsvallskommun")
 	oi.CharLimit = 100
-	oi.Width = 60
+	oi.SetWidth(60)
 
 	ti := textinput.New()
 	ti.Placeholder = "team name (optional)"
 	ti.SetValue("api-team")
 	ti.CharLimit = 100
-	ti.Width = 60
+	ti.SetWidth(60)
 
 	pi := textinput.New()
 	pi.Placeholder = "destination path (default: .)"
 	pi.SetValue(".")
 	pi.CharLimit = 200
-	pi.Width = 60
+	pi.SetWidth(60)
 
 	return CloneModel{
 		step:      cloneStepInput,
@@ -88,12 +89,13 @@ func (m CloneModel) Init() tea.Cmd {
 
 func (m CloneModel) Update(msg tea.Msg) (CloneModel, tea.Cmd) {
 	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.height = wsm.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(wsm.Width-6, wsm.Height-10)
+			m.viewport = viewport.New(viewport.WithWidth(wsm.Width-6), viewport.WithHeight(wsm.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = wsm.Width - 6
-			m.viewport.Height = wsm.Height - 10
+			m.viewport.SetWidth(wsm.Width - 6)
+			m.viewport.SetHeight(wsm.Height - 10)
 		}
 	}
 
@@ -110,7 +112,7 @@ func (m CloneModel) Update(msg tea.Msg) (CloneModel, tea.Cmd) {
 
 func (m CloneModel) updateInput(msg tea.Msg) (CloneModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("tab"))):
 			m.focusIndex = (m.focusIndex + 1) % 4
@@ -269,7 +271,7 @@ func (m CloneModel) updateProgress(msg tea.Msg) (CloneModel, tea.Cmd) {
 
 func (m CloneModel) updateResults(msg tea.Msg) (CloneModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q", "enter"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -304,8 +306,8 @@ func (m CloneModel) View() string {
 			content += fmt.Sprintf("%s%s\n  %s\n\n", marker, prLabelStyle.Render(label), inputs[i])
 		}
 
-		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("tab switch field  •  enter clone  •  esc back")
+		s += inputBox.Render(content)
+		return s
 
 	case cloneStepProgress:
 		s += m.progress.View()
@@ -316,11 +318,7 @@ func (m CloneModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

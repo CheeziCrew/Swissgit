@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/tui/screens"
 )
@@ -23,6 +23,8 @@ const (
 	ScreenAutomerge
 	ScreenMergePRs
 	ScreenEnableWorkflows
+	ScreenTeamPRs
+	ScreenMyPRs
 )
 
 // NavigateMsg tells the root model to switch screens.
@@ -37,7 +39,6 @@ type Model struct {
 	width   int
 	height  int
 	history *History
-	// Sub-screen models will be added as we build them
 	pr         screens.PullRequestModel
 	cleanup    screens.CleanupModel
 	commit     screens.CommitModel
@@ -47,6 +48,8 @@ type Model struct {
 	automerge       screens.AutomergeModel
 	mergePRs        screens.MergePRsModel
 	enableWorkflows screens.EnableWorkflowsModel
+	teamPRs         screens.TeamPRsModel
+	myPRs           screens.MyPRsModel
 	repoSelect      screens.RepoSelectModel
 }
 
@@ -69,8 +72,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-	case tea.KeyMsg:
-		// Global quit on ctrl+c
+	case tea.KeyPressMsg:
 		if key.Matches(msg, DefaultKeyMap.Quit) && m.current == ScreenMenu {
 			return m, tea.Quit
 		}
@@ -85,14 +87,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case screens.BackToMenuMsg:
 		m.current = ScreenMenu
 		m.menu = screens.NewMenuModel()
-		return m, nil
+		return m, func() tea.Msg {
+			return tea.WindowSizeMsg{Width: m.width, Height: m.height}
+		}
 
 	case screens.SaveHistoryMsg:
 		m.history.Add(msg.Category, msg.Value)
 		return m, nil
 	}
 
-	// Delegate to active screen
 	var cmd tea.Cmd
 	switch m.current {
 	case ScreenMenu:
@@ -115,13 +118,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mergePRs, cmd = m.mergePRs.Update(msg)
 	case ScreenEnableWorkflows:
 		m.enableWorkflows, cmd = m.enableWorkflows.Update(msg)
+	case ScreenTeamPRs:
+		m.teamPRs, cmd = m.teamPRs.Update(msg)
+	case ScreenMyPRs:
+		m.myPRs, cmd = m.myPRs.Update(msg)
 	case ScreenRepoSelect:
 		m.repoSelect, cmd = m.repoSelect.Update(msg)
 	}
 	return m, cmd
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	var content string
 	switch m.current {
 	case ScreenMenu:
@@ -144,10 +151,16 @@ func (m Model) View() string {
 		content = m.mergePRs.View()
 	case ScreenEnableWorkflows:
 		content = m.enableWorkflows.View()
+	case ScreenTeamPRs:
+		content = m.teamPRs.View()
+	case ScreenMyPRs:
+		content = m.myPRs.View()
 	case ScreenRepoSelect:
 		content = m.repoSelect.View()
 	}
-	return lipgloss.NewStyle().Padding(1, 2).Render(content)
+	v := tea.NewView(lipgloss.NewStyle().Padding(1, 2, 0, 2).Render(content))
+	v.AltScreen = true
+	return v
 }
 
 func (m *Model) handleMenuSelection(msg screens.MenuSelectionMsg) tea.Cmd {
@@ -190,6 +203,14 @@ func (m *Model) handleMenuSelection(msg screens.MenuSelectionMsg) tea.Cmd {
 		m.current = ScreenEnableWorkflows
 		m.enableWorkflows = screens.NewEnableWorkflowsModel()
 		initCmd = m.enableWorkflows.Init()
+	case "teamprs":
+		m.current = ScreenTeamPRs
+		m.teamPRs = screens.NewTeamPRsModel()
+		initCmd = m.teamPRs.Init()
+	case "myprs":
+		m.current = ScreenMyPRs
+		m.myPRs = screens.NewMyPRsModel()
+		initCmd = m.myPRs.Init()
 	default:
 		return nil
 	}

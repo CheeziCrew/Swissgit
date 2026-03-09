@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -59,11 +59,11 @@ func (m CleanupModel) Update(msg tea.Msg) (CleanupModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(msg.Width-6, msg.Height-10)
+			m.viewport = viewport.New(viewport.WithWidth(msg.Width-6), viewport.WithHeight(msg.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = msg.Width - 6
-			m.viewport.Height = msg.Height - 10
+			m.viewport.SetWidth(msg.Width - 6)
+			m.viewport.SetHeight(msg.Height - 10)
 		}
 	default:
 		_ = msg
@@ -84,7 +84,7 @@ func (m CleanupModel) Update(msg tea.Msg) (CleanupModel, tea.Cmd) {
 
 func (m CleanupModel) updateDrop(msg tea.Msg) (CleanupModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
 			m.dropCursor = 1 - m.dropCursor
@@ -93,7 +93,12 @@ func (m CleanupModel) updateDrop(msg tea.Msg) (CleanupModel, tea.Cmd) {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			m.dropChanges = m.dropCursor == 1
 			m.step = cleanupStepRepoSelect
-			m.repoSelect = NewRepoSelectModel("cleanup", ".", m.height)
+			dropLabel := "no"
+			if m.dropChanges {
+				dropLabel = "yes"
+			}
+			preview := titleStyle.Render("🧹 Cleanup") + "\n\n" + summaryBlock(summaryLine("drop changes", dropLabel))
+			m.repoSelect = NewRepoSelectModel("cleanup", ".", lipgloss.Height(preview), m.height)
 			return m, m.repoSelect.Init()
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -191,14 +196,13 @@ func (m CleanupModel) updateProgress(msg tea.Msg) (CleanupModel, tea.Cmd) {
 
 func (m CleanupModel) updateResults(msg tea.Msg) (CleanupModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q", "enter"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
 		}
 	}
 
-	// Let viewport handle scrolling
 	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
 	return m, cmd
@@ -229,8 +233,7 @@ func (m CleanupModel) View() string {
 				s += menuInactiveItem.Render(inactiveLine) + "\n"
 			}
 		}
-		s += "\n"
-		s += menuHelpBox.Render("↑↓ navigate  •  enter select  •  esc back")
+		return s
 
 	case cleanupStepRepoSelect:
 		dropLabel := "no"
@@ -249,11 +252,7 @@ func (m CleanupModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

@@ -5,10 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/git"
 	"github.com/CheeziCrew/swissgit/ops"
@@ -77,6 +77,7 @@ type StatusModel struct {
 	results   []ops.StatusResult
 	viewport  viewport.Model
 	viewReady bool
+	height    int
 }
 
 func NewStatusModel() StatusModel {
@@ -133,12 +134,13 @@ func (m *StatusModel) startStatusTasks(paths []string) tea.Cmd {
 
 func (m StatusModel) Update(msg tea.Msg) (StatusModel, tea.Cmd) {
 	if wsm, ok := msg.(tea.WindowSizeMsg); ok {
+		m.height = wsm.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(wsm.Width-4, wsm.Height-8)
+			m.viewport = viewport.New(viewport.WithWidth(wsm.Width-4), viewport.WithHeight(wsm.Height-8))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = wsm.Width - 4
-			m.viewport.Height = wsm.Height - 8
+			m.viewport.SetWidth(wsm.Width - 4)
+			m.viewport.SetHeight(wsm.Height - 8)
 		}
 	}
 
@@ -183,7 +185,7 @@ func (m StatusModel) updateProgress(msg tea.Msg) (StatusModel, tea.Cmd) {
 		m.viewport.SetContent(m.renderResults())
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -197,7 +199,7 @@ func (m StatusModel) updateProgress(msg tea.Msg) (StatusModel, tea.Cmd) {
 
 func (m StatusModel) updateResults(msg tea.Msg) (StatusModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -246,7 +248,6 @@ func formatRepoLine(r ops.StatusResult) string {
 }
 
 func (m StatusModel) renderResults() string {
-	// Sort results by name
 	sorted := make([]ops.StatusResult, len(m.results))
 	copy(sorted, m.results)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -335,11 +336,7 @@ func (m StatusModel) View() string {
 		} else {
 			s += m.renderResults() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

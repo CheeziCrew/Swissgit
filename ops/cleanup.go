@@ -41,7 +41,6 @@ func CleanupRepo(repoPath string, dropChanges bool, defaultBranchOverride string
 	defaultBranch := git.DefaultBranch(repoPath, defaultBranchOverride)
 	result := CleanupResult{RepoName: repoName, DefaultBranch: defaultBranch}
 
-	// Drop changes
 	hadChanges := false
 	if dropChanges {
 		pre, _ := git.CountChangesShell(repoPath)
@@ -60,7 +59,6 @@ func CleanupRepo(repoPath string, dropChanges bool, defaultBranchOverride string
 		result.DroppedChanges = hadChanges
 	}
 
-	// Update branches
 	pruned, remaining, err := updateBranches(repo, repoPath, defaultBranch)
 	if err != nil {
 		result.Error = fmt.Sprintf("branch update failed: %s", err)
@@ -69,7 +67,6 @@ func CleanupRepo(repoPath string, dropChanges bool, defaultBranchOverride string
 	result.PrunedBranches = pruned
 	result.RemainingBranch = remaining
 
-	// Check remaining changes
 	if !dropChanges {
 		changes, err := git.CountChangesShell(repoPath)
 		if err != nil {
@@ -79,14 +76,12 @@ func CleanupRepo(repoPath string, dropChanges bool, defaultBranchOverride string
 		result.Changes = changes
 	}
 
-	// Get current branch
 	result.CurrentBranch, _ = git.GetBranchName(repo)
 	result.Success = true
 	return result
 }
 
 func updateBranches(repo *gogit.Repository, repoPath, defaultBranch string) (pruned, remaining int, err error) {
-	// Shell checkout default branch
 	cmd := exec.Command("git", "-C", repoPath, "checkout", defaultBranch)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return 0, 0, fmt.Errorf("failed to checkout %s: %s", defaultBranch, strings.TrimSpace(string(out)))
@@ -96,7 +91,6 @@ func updateBranches(repo *gogit.Repository, repoPath, defaultBranch string) (pru
 		return 0, 0, fmt.Errorf("failed to fetch remote: %w", err)
 	}
 
-	// Shell pull
 	pullCmd := exec.Command("git", "-C", repoPath, "pull")
 	if out, err := pullCmd.CombinedOutput(); err != nil {
 		return 0, 0, fmt.Errorf("failed to pull: %s", strings.TrimSpace(string(out)))
@@ -164,16 +158,13 @@ func updateBranches(repo *gogit.Repository, repoPath, defaultBranch string) (pru
 			if branch == "" || protected[branch] || deleteSet[branch] {
 				continue
 			}
-			// Check if origin/<branch> exists
 			check := exec.Command("git", "-C", repoPath, "rev-parse", "--verify", "origin/"+branch)
 			if check.Run() != nil {
-				// Remote branch doesn't exist — it was deleted (merged via PR)
 				deleteSet[branch] = true
 			}
 		}
 	}
 
-	// Count total local branches
 	cmd = exec.Command("git", "-C", repoPath, "branch")
 	output, err = cmd.Output()
 	totalLocal := 0

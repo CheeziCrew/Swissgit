@@ -36,8 +36,18 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 		return result
 	}
 
-	// Shell git add . (respects .gitignore)
-	cmd := exec.Command("git", "-C", repoPath, "add", ".")
+	// Create/checkout branch before staging
+	if branchName != "" {
+		if err := createOrCheckoutBranch(branchName, worktree); err != nil {
+			result.Error = fmt.Sprintf("failed to switch to branch: %s", err)
+			return result
+		}
+	} else {
+		branchName, _ = git.GetBranchName(repo)
+	}
+	result.Branch = branchName
+
+	cmd := exec.Command("git", "-C", repoPath, "add", ".") // shell git to respect .gitignore
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	if err := cmd.Run(); err != nil {
@@ -45,13 +55,6 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 		return result
 	}
 
-	// Pull latest
-	if err := git.PullChanges(worktree); err != nil {
-		result.Error = fmt.Sprintf("failed to pull changes: %s", err)
-		return result
-	}
-
-	// Check for changes
 	status, err := worktree.Status()
 	if err != nil {
 		result.Error = fmt.Sprintf("failed to get status: %s", err)
@@ -64,18 +67,6 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 		return result
 	}
 
-	// Create/checkout branch
-	if branchName != "" {
-		if err := createOrCheckoutBranch(branchName, worktree); err != nil {
-			result.Error = fmt.Sprintf("failed to switch to branch: %s", err)
-			return result
-		}
-	} else {
-		branchName, _ = git.GetBranchName(repo)
-	}
-	result.Branch = branchName
-
-	// Shell git commit
 	fullMessage := fmt.Sprintf("%s: %s", branchName, commitMessage)
 	commitCmd := exec.Command("git", "-C", repoPath, "commit", "-m", fullMessage)
 	commitCmd.Stdout = io.Discard
@@ -85,7 +76,6 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 		return result
 	}
 
-	// go-git push
 	if err := git.PushChanges(repo); err != nil {
 		result.Error = fmt.Sprintf("failed to push changes: %s", err)
 		return result
@@ -98,7 +88,6 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 func createOrCheckoutBranch(branchName string, worktree *gogit.Worktree) error {
 	ref := plumbing.NewBranchReferenceName(branchName)
 
-	// Try create+checkout
 	err := worktree.Checkout(&gogit.CheckoutOptions{
 		Branch: ref,
 		Keep:   true,
@@ -108,7 +97,6 @@ func createOrCheckoutBranch(branchName string, worktree *gogit.Worktree) error {
 		return nil
 	}
 
-	// Branch exists — just switch
 	err = worktree.Checkout(&gogit.CheckoutOptions{
 		Branch: ref,
 		Keep:   true,

@@ -3,11 +3,11 @@ package screens
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -64,20 +64,12 @@ type PullRequestModel struct {
 }
 
 func NewPullRequestModel(recentMessages []string) PullRequestModel {
-	mi := textinput.New()
-	mi.Placeholder = "PR title / commit message"
+	mi := newStyledInput("PR title / commit message")
 	mi.Focus()
 	mi.CharLimit = 200
-	mi.Width = 60
-	mi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	mi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
-	bi := textinput.New()
-	bi.Placeholder = "feature branch name (e.g. UF-123)"
+	bi := newStyledInput("feature branch name (e.g. UF-123)")
 	bi.CharLimit = 100
-	bi.Width = 60
-	bi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	bi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
 	return PullRequestModel{
 		step:           prStepMessage,
@@ -100,11 +92,11 @@ func (m PullRequestModel) Update(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(msg.Width-6, msg.Height-10)
+			m.viewport = viewport.New(viewport.WithWidth(msg.Width-6), viewport.WithHeight(msg.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = msg.Width - 6
-			m.viewport.Height = msg.Height - 10
+			m.viewport.SetWidth(msg.Width - 6)
+			m.viewport.SetHeight(msg.Height - 10)
 		}
 	default:
 		_ = msg
@@ -131,7 +123,7 @@ func (m PullRequestModel) Update(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 
 func (m PullRequestModel) updateMessage(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			val := m.messageInput.Value()
@@ -173,7 +165,7 @@ func (m PullRequestModel) updateMessage(msg tea.Msg) (PullRequestModel, tea.Cmd)
 			}
 		}
 	}
-	if _, ok := msg.(tea.KeyMsg); ok {
+	if _, ok := msg.(tea.KeyPressMsg); ok {
 		m.historyCursor = -1
 	}
 	var cmd tea.Cmd
@@ -183,7 +175,7 @@ func (m PullRequestModel) updateMessage(msg tea.Msg) (PullRequestModel, tea.Cmd)
 
 func (m PullRequestModel) updateBranch(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			val := m.branchInput.Value()
@@ -206,7 +198,7 @@ func (m PullRequestModel) updateBranch(msg tea.Msg) (PullRequestModel, tea.Cmd) 
 
 func (m PullRequestModel) updateChanges(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
 			m.changeCursor--
@@ -218,7 +210,7 @@ func (m PullRequestModel) updateChanges(msg tea.Msg) (PullRequestModel, tea.Cmd)
 			if m.changeCursor >= len(m.changeTypes) {
 				m.changeCursor = 0
 			}
-		case key.Matches(msg, key.NewBinding(key.WithKeys(" "))):
+		case key.Matches(msg, key.NewBinding(key.WithKeys("space"))):
 			m.changeSelected[m.changeCursor] = !m.changeSelected[m.changeCursor]
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			for i, ct := range m.changeTypes {
@@ -239,14 +231,16 @@ func (m PullRequestModel) updateChanges(msg tea.Msg) (PullRequestModel, tea.Cmd)
 
 func (m PullRequestModel) updateBreaking(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k", "down", "j"))):
 			m.breakingCursor = 1 - m.breakingCursor
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			m.breaking = m.breakingCursor == 1
 			m.step = prStepRepoSelect
-			m.repoSelect = NewRepoSelectModel("pullrequest", ".", m.height)
+			// Measure actual parent chrome instead of hardcoding
+			preview := titleStyle.Render("🚀 Pull Request") + "\n\n" + m.showSummary()
+			m.repoSelect = NewRepoSelectModel("pullrequest", ".", lipgloss.Height(preview), m.height)
 			return m, m.repoSelect.Init()
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
 			m.step = prStepChanges
@@ -343,7 +337,7 @@ func (m PullRequestModel) updateProgress(msg tea.Msg) (PullRequestModel, tea.Cmd
 
 func (m PullRequestModel) updateResults(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -368,7 +362,7 @@ func (m PullRequestModel) View() string {
 			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
 		}
 		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("enter next  •  esc back")
+		return s
 
 	case prStepBranch:
 		s += m.showSummary()
@@ -376,7 +370,7 @@ func (m PullRequestModel) View() string {
 		content += prLabelStyle.Render("Feature branch") + "\n"
 		content += m.branchInput.View()
 		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("enter next  •  esc back")
+		return s
 
 	case prStepChanges:
 		s += m.showSummary()
@@ -394,8 +388,7 @@ func (m PullRequestModel) View() string {
 				s += menuInactiveItem.Render(line) + "\n"
 			}
 		}
-		s += "\n"
-		s += menuHelpBox.Render("space toggle  •  enter next  •  esc back")
+		return s
 
 	case prStepBreaking:
 		s += m.showSummary()
@@ -419,8 +412,7 @@ func (m PullRequestModel) View() string {
 				s += menuInactiveItem.Render(inactiveLine) + "\n"
 			}
 		}
-		s += "\n"
-		s += menuHelpBox.Render("↑↓ navigate  •  enter select  •  esc back")
+		return s
 
 	case prStepRepoSelect:
 		s += m.showSummary()
@@ -436,11 +428,7 @@ func (m PullRequestModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

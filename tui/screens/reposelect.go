@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/git"
 )
@@ -52,37 +52,46 @@ type reposScanResultMsg struct {
 
 // RepoSelectModel lets the user pick repos from discovered subdirectories.
 type RepoSelectModel struct {
-	repos     []RepoInfo
-	cursor    int
-	selected  map[int]bool
-	caller    string
-	loading   bool
-	spinner   spinner.Model
-	rootPath  string
-	winHeight int // visible rows for the repo list
-	winOffset int // first visible index
+	repos        []RepoInfo
+	cursor       int
+	selected     map[int]bool
+	caller       string
+	loading      bool
+	spinner      spinner.Model
+	rootPath     string
+	termHeight   int // raw terminal height
+	winOffset    int // first visible index
+	parentOffset int // lines consumed by parent screen + app padding
 }
 
-func NewRepoSelectModel(caller, rootPath string, height ...int) RepoSelectModel {
+// measureOwnChrome returns the exact number of lines reposelect's non-repo
+// content occupies (title + scroll indicators).
+func measureOwnChrome(scrollable bool) int {
+	header := titleStyle.Render("Select Repos") + "\n"
+	chrome := lipgloss.Height(header)
+	if scrollable {
+		chrome += 2 // scroll-up + scroll-down indicator lines
+	}
+	return chrome
+}
+
+// NewRepoSelectModel creates a repo selector.
+// parentOffset = lines the parent screen renders above/below this component
+// (title, summary box, app.go padding, etc.)
+// termHeight = current terminal height so we can size the list immediately.
+func NewRepoSelectModel(caller, rootPath string, parentOffset, termHeight int) RepoSelectModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(colorMagenta)
 
-	h := 0
-	if len(height) > 0 && height[0] > 0 {
-		h = height[0] - 8
-		if h < 5 {
-			h = 5
-		}
-	}
-
 	return RepoSelectModel{
-		selected:  make(map[int]bool),
-		caller:    caller,
-		loading:   true,
-		spinner:   s,
-		rootPath:  rootPath,
-		winHeight: h,
+		selected:     make(map[int]bool),
+		caller:       caller,
+		loading:      true,
+		spinner:      s,
+		rootPath:     rootPath,
+		parentOffset: parentOffset,
+		termHeight:   termHeight,
 	}
 }
 
@@ -144,26 +153,31 @@ func getBranchShell(repoPath string) string {
 	return strings.TrimSpace(string(output))
 }
 
-func (m *RepoSelectModel) ensureCursorVisible() {
-	if m.winHeight <= 0 {
-		return
+// visibleRepoCount returns how many repo lines fit given the current state.
+func (m *RepoSelectModel) visibleRepoCount() int {
+	scrollable := len(m.repos) > 10 // assume scrollable for initial sizing
+	chrome := measureOwnChrome(scrollable)
+	wh := m.termHeight - m.parentOffset - chrome - 1 // -1 for app.go top padding
+	if wh < 5 {
+		wh = 5
 	}
+	return wh
+}
+
+func (m *RepoSelectModel) ensureCursorVisible() {
+	wh := m.visibleRepoCount()
 	if m.cursor < m.winOffset {
 		m.winOffset = m.cursor
 	}
-	if m.cursor >= m.winOffset+m.winHeight {
-		m.winOffset = m.cursor - m.winHeight + 1
+	if m.cursor >= m.winOffset+wh {
+		m.winOffset = m.cursor - wh + 1
 	}
 }
 
 func (m RepoSelectModel) Update(msg tea.Msg) (RepoSelectModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// Reserve lines for title, help text, and padding
-		m.winHeight = msg.Height - 8
-		if m.winHeight < 5 {
-			m.winHeight = 5
-		}
+		m.termHeight = msg.Height
 		m.ensureCursorVisible()
 
 	case spinner.TickMsg:
@@ -184,7 +198,7 @@ func (m RepoSelectModel) Update(msg tea.Msg) (RepoSelectModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.loading {
 			return m, nil
 		}
@@ -194,7 +208,8 @@ func (m RepoSelectModel) Update(msg tea.Msg) (RepoSelectModel, tea.Cmd) {
 			m.cursor--
 			if m.cursor < 0 {
 				m.cursor = len(m.repos) - 1
-				m.winOffset = len(m.repos) - m.winHeight
+				wh := m.visibleRepoCount()
+				m.winOffset = len(m.repos) - wh
 				if m.winOffset < 0 {
 					m.winOffset = 0
 				}
@@ -209,7 +224,7 @@ func (m RepoSelectModel) Update(msg tea.Msg) (RepoSelectModel, tea.Cmd) {
 			}
 			m.ensureCursorVisible()
 
-		case key.Matches(msg, key.NewBinding(key.WithKeys(" "))):
+		case key.Matches(msg, key.NewBinding(key.WithKeys("space"))):
 			m.selected[m.cursor] = !m.selected[m.cursor]
 
 		case key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+a"))):
@@ -253,25 +268,30 @@ func (m RepoSelectModel) View() string {
 	}
 
 	if len(m.repos) == 0 {
-		return inputBox.Render(prDimStyle.Render("No git repositories found.")) + "\n\n" + menuHelpBox.Render("esc back")
+		return inputBox.Render(prDimStyle.Render("No git repositories found."))
 	}
 
-	var s string
-	s += titleStyle.Render("Select Repos") + "\n\n"
+	// Dynamically compute how many repo lines fit — no hand-counted constants
+	wh := m.visibleRepoCount()
+	scrollable := len(m.repos) > wh
 
-	// Determine visible window
 	visibleStart := m.winOffset
-	visibleEnd := visibleStart + m.winHeight
-	if visibleEnd > len(m.repos) || m.winHeight <= 0 {
+	visibleEnd := visibleStart + wh
+	if visibleEnd > len(m.repos) {
 		visibleEnd = len(m.repos)
 	}
 	if visibleStart > len(m.repos) {
 		visibleStart = 0
 	}
 
-	// Show scroll-up indicator
+	var s string
+	s += titleStyle.Render("Select Repos") + "\n"
+
+	// Always reserve the scroll-up line when scrollable (prevents layout jumping)
 	if visibleStart > 0 {
 		s += helpStyle.Render(fmt.Sprintf("  ↑ %d more above", visibleStart)) + "\n"
+	} else if scrollable {
+		s += "\n"
 	}
 
 	for i := visibleStart; i < visibleEnd; i++ {
@@ -284,7 +304,6 @@ func (m RepoSelectModel) View() string {
 			check = checkStyle.Render("●")
 		}
 
-		// Name style: cursor > selected > unselected
 		name := repoUnselectedName.Render(r.Name)
 		if isCursor {
 			name = repoCursorName.Render(r.Name)
@@ -292,7 +311,6 @@ func (m RepoSelectModel) View() string {
 			name = repoSelectedName.Render(r.Name)
 		}
 
-		// Info badges — dim when unselected and not cursor
 		var info string
 		totalChanges := r.Modified + r.Added + r.Deleted + r.Untracked
 		if totalChanges > 0 {
@@ -314,23 +332,13 @@ func (m RepoSelectModel) View() string {
 		}
 	}
 
-	// Show scroll-down indicator
+	// Always reserve the scroll-down line when scrollable (prevents layout jumping)
 	remaining := len(m.repos) - visibleEnd
 	if remaining > 0 {
 		s += helpStyle.Render(fmt.Sprintf("  ↓ %d more below", remaining)) + "\n"
+	} else if scrollable {
+		s += "\n"
 	}
-
-	selected := 0
-	for _, v := range m.selected {
-		if v {
-			selected++
-		}
-	}
-
-	s += "\n" + menuHelpBox.Render(fmt.Sprintf(
-		"space toggle  •  ctrl+a all  •  enter confirm (%d/%d selected)  •  esc back",
-		selected, len(m.repos),
-	))
 
 	return s
 }

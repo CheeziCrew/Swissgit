@@ -22,7 +22,6 @@ func EnableAutomerge(target, repoPath string) AutomergeResult {
 	repoName, _ := git.GetRepoName(repoPath)
 	result := AutomergeResult{RepoName: repoName}
 
-	// Find PR number
 	cmdList := exec.Command("gh", "pr", "list", "--head", target, "--json", "number", "--jq", ".[0].number")
 	cmdList.Dir = repoPath
 	var out bytes.Buffer
@@ -39,7 +38,6 @@ func EnableAutomerge(target, repoPath string) AutomergeResult {
 	}
 	result.PRNumber = prNumber
 
-	// Enable auto-merge
 	cmdMerge := exec.Command("gh", "pr", "merge", prNumber, "--auto", "--merge", "--delete-branch=true")
 	cmdMerge.Dir = repoPath
 	if err := cmdMerge.Run(); err != nil {

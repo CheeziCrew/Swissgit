@@ -2,11 +2,12 @@ package screens
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // Base16 ANSI colors — respects terminal theme
@@ -71,7 +72,6 @@ var (
 			Foreground(colorGray).
 			MarginTop(1)
 
-	// Shared styles used by other screens
 	prLabelStyle = lipgloss.NewStyle().
 			Foreground(colorBrBlue).
 			Bold(true)
@@ -88,7 +88,7 @@ var (
 		Padding(1, 3).
 		MarginBottom(1)
 
-	logoGradientColors = []lipgloss.Color{
+	logoGradientColors = []color.Color{
 		colorBrMag,
 		colorMagenta,
 		colorBrBlue,
@@ -126,13 +126,6 @@ var (
 	menuInactiveDesc = lipgloss.NewStyle().
 				Foreground(colorGray)
 
-	menuHelpBox = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorGray).
-			Padding(0, 2).
-			Foreground(colorGray)
-
-	// Shared styles for cursor/check in other screens
 	cursorMark   = lipgloss.NewStyle().Foreground(colorBrMag).Bold(true)
 	checkStyle   = lipgloss.NewStyle().Foreground(colorBrMag).Bold(true)
 	uncheckStyle = lipgloss.NewStyle().Foreground(colorGray)
@@ -155,6 +148,7 @@ type MenuModel struct {
 	items    []menuItem
 	cursor   int
 	selected string
+	height   int
 }
 
 func NewMenuModel() MenuModel {
@@ -169,6 +163,8 @@ func NewMenuModel() MenuModel {
 			{icon: "🔀", name: "Automerge", command: "automerge", desc: "enable auto-merge on PRs"},
 			{icon: "🔃", name: "Merge PRs", command: "mergeprs", desc: "merge approved pull requests"},
 			{icon: "⚙", name: "Enable Workflows", command: "enableworkflows", desc: "re-enable disabled CI workflows"},
+			{icon: "👥", name: "Team PRs", command: "teamprs", desc: "list open PRs across team repos"},
+			{icon: "🔖", name: "My PRs", command: "myprs", desc: "list your open pull requests"},
 		},
 	}
 }
@@ -179,7 +175,9 @@ func (m MenuModel) Init() tea.Cmd {
 
 func (m MenuModel) Update(msg tea.Msg) (MenuModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
 			m.cursor--
@@ -230,9 +228,6 @@ func (m MenuModel) View() string {
 			s.WriteString(menuInactiveItem.Render(line) + "\n")
 		}
 	}
-
-	s.WriteString("\n")
-	s.WriteString(menuHelpBox.Render("↑↓ navigate  •  enter select  •  q quit"))
 
 	return s.String()
 }

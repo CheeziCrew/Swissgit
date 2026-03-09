@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -53,20 +53,12 @@ type CommitModel struct {
 }
 
 func NewCommitModel(recentMessages []string) CommitModel {
-	mi := textinput.New()
-	mi.Placeholder = "commit message"
+	mi := newStyledInput("commit message")
 	mi.Focus()
 	mi.CharLimit = 200
-	mi.Width = 60
-	mi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	mi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
-	bi := textinput.New()
-	bi.Placeholder = "branch (optional, leave empty for current)"
+	bi := newStyledInput("branch (optional, leave empty for current)")
 	bi.CharLimit = 100
-	bi.Width = 60
-	bi.PromptStyle = lipgloss.NewStyle().Foreground(colorBrMag)
-	bi.TextStyle = lipgloss.NewStyle().Foreground(colorFg)
 
 	return CommitModel{
 		step:           commitStepMessage,
@@ -86,11 +78,11 @@ func (m CommitModel) Update(msg tea.Msg) (CommitModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		if !m.viewReady {
-			m.viewport = viewport.New(msg.Width-6, msg.Height-10)
+			m.viewport = viewport.New(viewport.WithWidth(msg.Width-6), viewport.WithHeight(msg.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.Width = msg.Width - 6
-			m.viewport.Height = msg.Height - 10
+			m.viewport.SetWidth(msg.Width - 6)
+			m.viewport.SetHeight(msg.Height - 10)
 		}
 	default:
 		_ = msg
@@ -113,7 +105,7 @@ func (m CommitModel) Update(msg tea.Msg) (CommitModel, tea.Cmd) {
 
 func (m CommitModel) updateMessage(msg tea.Msg) (CommitModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			val := m.messageInput.Value()
@@ -156,7 +148,7 @@ func (m CommitModel) updateMessage(msg tea.Msg) (CommitModel, tea.Cmd) {
 		}
 	}
 	// Any non-arrow key resets history browsing
-	if _, ok := msg.(tea.KeyMsg); ok {
+	if _, ok := msg.(tea.KeyPressMsg); ok {
 		m.historyCursor = -1
 	}
 	var cmd tea.Cmd
@@ -166,12 +158,17 @@ func (m CommitModel) updateMessage(msg tea.Msg) (CommitModel, tea.Cmd) {
 
 func (m CommitModel) updateBranch(msg tea.Msg) (CommitModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			m.branch = m.branchInput.Value()
 			m.step = commitStepRepoSelect
-			m.repoSelect = NewRepoSelectModel("commit", ".", m.height)
+			parts := []string{summaryLine("message", m.message)}
+			if m.branch != "" {
+				parts = append(parts, summaryLine("branch", m.branch))
+			}
+			preview := titleStyle.Render("📦 Commit & Push") + "\n\n" + summaryBlock(parts...)
+			m.repoSelect = NewRepoSelectModel("commit", ".", lipgloss.Height(preview), m.height)
 			return m, m.repoSelect.Init()
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
 			m.step = commitStepMessage
@@ -264,7 +261,7 @@ func (m CommitModel) updateProgress(msg tea.Msg) (CommitModel, tea.Cmd) {
 
 func (m CommitModel) updateResults(msg tea.Msg) (CommitModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
@@ -289,7 +286,7 @@ func (m CommitModel) View() string {
 			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
 		}
 		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("enter next  •  esc back")
+		return s
 
 	case commitStepBranch:
 		s += summaryBlock(summaryLine("message", m.message))
@@ -297,7 +294,7 @@ func (m CommitModel) View() string {
 		content += prLabelStyle.Render("Branch (optional)") + "\n"
 		content += m.branchInput.View()
 		s += inputBox.Render(content) + "\n\n"
-		s += menuHelpBox.Render("enter next (empty = current branch)  •  esc back")
+		return s
 
 	case commitStepRepoSelect:
 		parts := []string{summaryLine("message", m.message)}
@@ -316,11 +313,7 @@ func (m CommitModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
-		scrollHint := ""
-		if m.viewReady && m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {
-			scrollHint = "  •  ↑↓ scroll"
-		}
-		s += menuHelpBox.Render("esc/q back to menu" + scrollHint)
+		return s
 	}
 
 	return s

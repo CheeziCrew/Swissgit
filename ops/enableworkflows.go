@@ -58,7 +58,6 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 	result := EnableWorkflowResult{Repo: repo}
 	fullRepo := fmt.Sprintf("%s/%s", org, repo)
 
-	// List all workflows
 	cmd := exec.Command("gh", "workflow", "list",
 		"--repo", fullRepo,
 		"--all",
@@ -85,7 +84,6 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 		return result
 	}
 
-	// Find and enable matching disabled workflows
 	enabled := 0
 	for _, wf := range workflows {
 		if wf.State != "disabled_inactivity" {
@@ -108,7 +106,6 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 
 	result.EnabledCount = enabled
 
-	// Close/reopen matching PRs to retrigger workflow runs
 	if enabled > 0 && prBranch != "" {
 		retriggered, err := retriggerPRs(fullRepo, prBranch)
 		if err != nil {

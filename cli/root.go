@@ -9,7 +9,7 @@ import (
 
 	"github.com/CheeziCrew/swissgit/git"
 	"github.com/CheeziCrew/swissgit/ops"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -37,11 +37,10 @@ func BuildCLI() *cobra.Command {
 	root.AddCommand(automergeCLICmd())
 	root.AddCommand(mergePRsCLICmd())
 	root.AddCommand(enableWorkflowsCLICmd())
+	root.AddCommand(teamPRsCLICmd())
 
 	return root
 }
-
-// --- Pull Request ---
 
 func prCmd() *cobra.Command {
 	var message, branch, target string
@@ -70,8 +69,6 @@ func prCmd() *cobra.Command {
 	return cmd
 }
 
-// --- Commit ---
-
 func commitCLICmd() *cobra.Command {
 	var message, branch string
 	var allFlag bool
@@ -96,8 +93,6 @@ func commitCLICmd() *cobra.Command {
 
 	return cmd
 }
-
-// --- Cleanup ---
 
 func cleanupCLICmd() *cobra.Command {
 	var dropChanges, allFlag bool
@@ -141,8 +136,6 @@ func cleanupCLICmd() *cobra.Command {
 
 	return cmd
 }
-
-// --- Status ---
 
 func statusCLICmd() *cobra.Command {
 	var allFlag, verbose bool
@@ -204,8 +197,6 @@ func statusCLICmd() *cobra.Command {
 	return cmd
 }
 
-// --- Branches ---
-
 func branchesCLICmd() *cobra.Command {
 	var allFlag bool
 
@@ -239,8 +230,6 @@ func branchesCLICmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Scan all repos")
 	return cmd
 }
-
-// --- Clone ---
 
 func cloneCLICmd() *cobra.Command {
 	var repoURL, orgName, teamName, destPath string
@@ -278,8 +267,6 @@ func cloneCLICmd() *cobra.Command {
 	return cmd
 }
 
-// --- Automerge ---
-
 func automergeCLICmd() *cobra.Command {
 	var target string
 	var allFlag bool
@@ -307,8 +294,6 @@ func automergeCLICmd() *cobra.Command {
 
 	return cmd
 }
-
-// --- Merge PRs ---
 
 func mergePRsCLICmd() *cobra.Command {
 	var orgName string
@@ -381,8 +366,6 @@ func mergePRsCLICmd() *cobra.Command {
 	return cmd
 }
 
-// --- Enable Workflows ---
-
 func enableWorkflowsCLICmd() *cobra.Command {
 	var orgName, workflowName, prBranch string
 
@@ -417,7 +400,44 @@ func enableWorkflowsCLICmd() *cobra.Command {
 	return cmd
 }
 
-// --- Helpers ---
+func teamPRsCLICmd() *cobra.Command {
+	var orgName, teamName string
+
+	cmd := &cobra.Command{
+		Use:   "team-prs",
+		Short: "List open PRs across team repos",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			excludePrefixes := []string{"web-app-", "Camunda-"}
+			repos, err := ops.FetchTeamRepoNames(orgName, teamName, excludePrefixes)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Found %d repos for %s/%s\n", len(repos), orgName, teamName)
+
+			prs, err := ops.FetchTeamPRs(orgName, repos)
+			if err != nil {
+				return err
+			}
+
+			if len(prs) == 0 {
+				fmt.Println("No open PRs.")
+				return nil
+			}
+
+			fmt.Printf("\n%d open PR(s):\n\n", len(prs))
+			for _, pr := range prs {
+				fmt.Printf(" %s %-30s #%-5d %-16s %s\n",
+					ok, pr.Repo, pr.Number, dim.Render(pr.Author), pr.Title)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", "GitHub org")
+	cmd.Flags().StringVarP(&teamName, "team", "t", "team-unmasked", "Team slug")
+
+	return cmd
+}
 
 func resolvePaths(root string, all bool) []string {
 	if all {
