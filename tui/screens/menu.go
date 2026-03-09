@@ -167,6 +167,8 @@ func NewMenuModel() MenuModel {
 			{icon: "🌿", name: "Branches", command: "branches", desc: "list local, remote & stale branches"},
 			{icon: "📥", name: "Clone", command: "clone", desc: "clone repo or entire org"},
 			{icon: "🔀", name: "Automerge", command: "automerge", desc: "enable auto-merge on PRs"},
+			{icon: "🔃", name: "Merge PRs", command: "mergeprs", desc: "merge approved pull requests"},
+			{icon: "⚙", name: "Enable Workflows", command: "enableworkflows", desc: "re-enable disabled CI workflows"},
 		},
 	}
 }

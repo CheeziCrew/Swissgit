@@ -21,6 +21,8 @@ const (
 	ScreenBranches
 	ScreenClone
 	ScreenAutomerge
+	ScreenMergePRs
+	ScreenEnableWorkflows
 )
 
 // NavigateMsg tells the root model to switch screens.
@@ -42,8 +44,10 @@ type Model struct {
 	status     screens.StatusModel
 	branches   screens.BranchesModel
 	clone      screens.CloneModel
-	automerge  screens.AutomergeModel
-	repoSelect screens.RepoSelectModel
+	automerge       screens.AutomergeModel
+	mergePRs        screens.MergePRsModel
+	enableWorkflows screens.EnableWorkflowsModel
+	repoSelect      screens.RepoSelectModel
 }
 
 // New creates a fresh root model.
@@ -107,6 +111,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clone, cmd = m.clone.Update(msg)
 	case ScreenAutomerge:
 		m.automerge, cmd = m.automerge.Update(msg)
+	case ScreenMergePRs:
+		m.mergePRs, cmd = m.mergePRs.Update(msg)
+	case ScreenEnableWorkflows:
+		m.enableWorkflows, cmd = m.enableWorkflows.Update(msg)
 	case ScreenRepoSelect:
 		m.repoSelect, cmd = m.repoSelect.Update(msg)
 	}
@@ -132,6 +140,10 @@ func (m Model) View() string {
 		content = m.clone.View()
 	case ScreenAutomerge:
 		content = m.automerge.View()
+	case ScreenMergePRs:
+		content = m.mergePRs.View()
+	case ScreenEnableWorkflows:
+		content = m.enableWorkflows.View()
 	case ScreenRepoSelect:
 		content = m.repoSelect.View()
 	}
@@ -170,6 +182,14 @@ func (m *Model) handleMenuSelection(msg screens.MenuSelectionMsg) tea.Cmd {
 		m.current = ScreenAutomerge
 		m.automerge = screens.NewAutomergeModel()
 		initCmd = m.automerge.Init()
+	case "mergeprs":
+		m.current = ScreenMergePRs
+		m.mergePRs = screens.NewMergePRsModel()
+		initCmd = m.mergePRs.Init()
+	case "enableworkflows":
+		m.current = ScreenEnableWorkflows
+		m.enableWorkflows = screens.NewEnableWorkflowsModel()
+		initCmd = m.enableWorkflows.Init()
 	default:
 		return nil
 	}
