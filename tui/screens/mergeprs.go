@@ -260,7 +260,18 @@ func (m MergePRsModel) updateProgress(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 			}
 		}
 
-		// Always wait + re-fetch — more PRs may appear server-side
+		// Remove merged PRs from the queue
+		end := m.batchSize
+		if end > len(m.prs) {
+			end = len(m.prs)
+		}
+		m.prs = m.prs[end:]
+
+		// If the queue is empty, we're done — no point waiting
+		if len(m.prs) == 0 {
+			return m.goToResults()
+		}
+
 		return m, m.startWait()
 	}
 
