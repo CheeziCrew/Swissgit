@@ -15,9 +15,15 @@ import (
 
 func init() {
 	// Load .env from the directory of the executable (not CWD).
+	// Resolve symlinks so it works when invoked via e.g. ~/.local/bin/ symlink.
 	exePath, err := os.Executable()
 	if err != nil {
 		log.Printf("Error getting executable path: %v\n", err)
+		return
+	}
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		log.Printf("Error resolving symlinks: %v\n", err)
 		return
 	}
 	envPath := filepath.Join(filepath.Dir(exePath), ".env")
