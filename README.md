@@ -6,12 +6,12 @@ Multi-repo Git workflows without the pain. Interactive TUI or fast CLI — your 
 
 ## Status
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=alert_status)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
-[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=reliability_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=security_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=bugs)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_Swissgit&metric=alert_status)](https://sonarcloud.io/summary/overall?id=CheeziCrew_Swissgit)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_Swissgit&metric=reliability_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_Swissgit)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_Swissgit&metric=security_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_Swissgit)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_Swissgit&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_Swissgit)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_Swissgit&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=CheeziCrew_Swissgit)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_Swissgit&metric=bugs)](https://sonarcloud.io/summary/overall?id=CheeziCrew_Swissgit)
 
 ## Quick Start
 
