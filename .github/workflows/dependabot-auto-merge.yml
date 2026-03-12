@@ -1,0 +1,14 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    uses: CheeziCrew/.github/.github/workflows/dependabot-auto-merge.yml@3bd54f3d4220a13f55689c035c4d4167a1e1e41b
+    secrets: inherit

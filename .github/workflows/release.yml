@@ -10,37 +10,5 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
-      - name: Run tests
-        run: go test ./...
-
-      - name: Bump patch version and tag
-        id: tag
-        run: |
-          latest=$(git tag --sort=-version:refname | head -n 1 2>/dev/null || echo "v0.0.0")
-          version=${latest#v}
-          IFS='.' read -r major minor patch <<< "$version"
-          new_tag="v${major}.${minor}.$((patch + 1))"
-          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
-          git tag "$new_tag"
-          git push origin "$new_tag"
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: CheeziCrew/.github/.github/workflows/release.yml@3bd54f3d4220a13f55689c035c4d4167a1e1e41b
+    secrets: inherit
