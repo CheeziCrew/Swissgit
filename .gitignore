@@ -17,7 +17,8 @@
 !go.sum
 !go.mod
 
-!*.md
+!README.md
+!ops/PULL_REQUEST_TEMPLATE.md
 !LICENSE
 
 !.goreleaser.yml
