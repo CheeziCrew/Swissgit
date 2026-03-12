@@ -121,6 +121,17 @@ func (m MyPRsModel) updateResults(msg tea.Msg) (MyPRsModel, tea.Cmd) {
 	return m, cmd
 }
 
+func formatMyPRMeta(pr ops.MyPR) string {
+	meta := ""
+	if pr.Draft {
+		meta += " " + tpDraftMark
+	}
+	if !pr.CreatedAt.IsZero() {
+		meta += " " + tpDot + " " + formatAge(pr.CreatedAt)
+	}
+	return meta
+}
+
 func (m MyPRsModel) renderTable() string {
 	if len(m.prs) == 0 {
 		return tpDim.Render("No open PRs found.")
@@ -150,15 +161,7 @@ func (m MyPRsModel) renderTable() string {
 		prs := grouped[repo]
 		b.WriteString("  " + tpRepoName.Render(repo) + " " + tpRepoCount.Render(fmt.Sprintf("(%d)", len(prs))) + "\n")
 		for _, pr := range prs {
-			title := prLink(pr.URL, pr.Title)
-			meta := ""
-			if pr.Draft {
-				meta += " " + tpDraftMark
-			}
-			if !pr.CreatedAt.IsZero() {
-				meta += " " + tpDot + " " + formatAge(pr.CreatedAt)
-			}
-			b.WriteString(fmt.Sprintf("    %s %s%s\n", tpBullet, title, meta))
+			b.WriteString(fmt.Sprintf("    %s %s%s\n", tpBullet, prLink(pr.URL, pr.Title), formatMyPRMeta(pr)))
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")

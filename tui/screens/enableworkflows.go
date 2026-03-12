@@ -305,6 +305,25 @@ func (m EnableWorkflowsModel) updateResults(msg tea.Msg) (EnableWorkflowsModel, 
 	return m, cmd
 }
 
+func (m EnableWorkflowsModel) workflowLabel() string {
+	if m.workflowName == "" {
+		return "(all disabled)"
+	}
+	return m.workflowName
+}
+
+func (m EnableWorkflowsModel) summaryLines(extras ...string) []string {
+	lines := []string{
+		summaryLine("org", m.org),
+		summaryLine("workflow", m.workflowLabel()),
+	}
+	lines = append(lines, extras...)
+	if m.prBranch != "" {
+		lines = append(lines, summaryLine("retrigger", m.prBranch))
+	}
+	return lines
+}
+
 func (m EnableWorkflowsModel) View() string {
 	var s string
 	s += titleStyle.Render("⚙ Enable Workflows") + "\n\n"
@@ -331,35 +350,11 @@ func (m EnableWorkflowsModel) View() string {
 		return s
 
 	case enableWFStepFetching:
-		wfLabel := m.workflowName
-		if wfLabel == "" {
-			wfLabel = "(all disabled)"
-		}
-		lines := []string{
-			summaryLine("org", m.org),
-			summaryLine("workflow", wfLabel),
-		}
-		if m.prBranch != "" {
-			lines = append(lines, summaryLine("retrigger", m.prBranch))
-		}
-		s += summaryBlock(lines...)
-		content := fmt.Sprintf("%s Fetching repos…", m.spinner.View())
-		s += inputBox.Render(content)
+		s += summaryBlock(m.summaryLines()...)
+		s += inputBox.Render(fmt.Sprintf("%s Fetching repos…", m.spinner.View()))
 
 	case enableWFStepProgress:
-		wfLabel := m.workflowName
-		if wfLabel == "" {
-			wfLabel = "(all disabled)"
-		}
-		lines := []string{
-			summaryLine("org", m.org),
-			summaryLine("workflow", wfLabel),
-			summaryLine("repos", fmt.Sprintf("%d", len(m.repos))),
-		}
-		if m.prBranch != "" {
-			lines = append(lines, summaryLine("retrigger", m.prBranch))
-		}
-		s += summaryBlock(lines...)
+		s += summaryBlock(m.summaryLines(summaryLine("repos", fmt.Sprintf("%d", len(m.repos))))...)
 		s += m.progress.View()
 
 	case enableWFStepResults:

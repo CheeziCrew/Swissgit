@@ -104,6 +104,28 @@ func (m CommitModel) Update(msg tea.Msg) (CommitModel, tea.Cmd) {
 	return m, nil
 }
 
+func (m *CommitModel) browseHistoryUp() {
+	if m.historyCursor == -1 {
+		m.typedValue = m.messageInput.Value()
+	}
+	m.historyCursor++
+	if m.historyCursor >= len(m.recentMessages) {
+		m.historyCursor = len(m.recentMessages) - 1
+	}
+	m.messageInput.SetValue(m.recentMessages[m.historyCursor])
+	m.messageInput.CursorEnd()
+}
+
+func (m *CommitModel) browseHistoryDown() {
+	m.historyCursor--
+	if m.historyCursor < 0 {
+		m.messageInput.SetValue(m.typedValue)
+	} else {
+		m.messageInput.SetValue(m.recentMessages[m.historyCursor])
+	}
+	m.messageInput.CursorEnd()
+}
+
 func (m CommitModel) updateMessage(msg tea.Msg) (CommitModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
@@ -124,31 +146,16 @@ func (m CommitModel) updateMessage(msg tea.Msg) (CommitModel, tea.Cmd) {
 			return m, func() tea.Msg { return BackToMenuMsg{} }
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up"))):
 			if len(m.recentMessages) > 0 {
-				if m.historyCursor == -1 {
-					m.typedValue = m.messageInput.Value()
-				}
-				m.historyCursor++
-				if m.historyCursor >= len(m.recentMessages) {
-					m.historyCursor = len(m.recentMessages) - 1
-				}
-				m.messageInput.SetValue(m.recentMessages[m.historyCursor])
-				m.messageInput.CursorEnd()
+				m.browseHistoryUp()
 				return m, nil
 			}
 		case key.Matches(msg, key.NewBinding(key.WithKeys("down"))):
 			if m.historyCursor >= 0 {
-				m.historyCursor--
-				if m.historyCursor < 0 {
-					m.messageInput.SetValue(m.typedValue)
-				} else {
-					m.messageInput.SetValue(m.recentMessages[m.historyCursor])
-				}
-				m.messageInput.CursorEnd()
+				m.browseHistoryDown()
 				return m, nil
 			}
 		}
 	}
-	// Any non-arrow key resets history browsing
 	if _, ok := msg.(tea.KeyPressMsg); ok {
 		m.historyCursor = -1
 	}
@@ -274,36 +281,40 @@ func (m CommitModel) updateResults(msg tea.Msg) (CommitModel, tea.Cmd) {
 	return m, cmd
 }
 
+func (m CommitModel) viewMessage() string {
+	var content string
+	content += prLabelStyle.Render("Commit message") + "\n"
+	content += m.messageInput.View()
+	if len(m.recentMessages) > 0 {
+		content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
+	}
+	return inputBox.Render(content) + "\n\n" + curd.RenderHintBar(st, []curd.Hint{
+		{Key: "enter", Desc: "submit"},
+		{Key: "esc", Desc: "back"},
+	})
+}
+
+func (m CommitModel) viewBranch() string {
+	s := summaryBlock(summaryLine("message", m.message))
+	var content string
+	content += prLabelStyle.Render("Branch (optional)") + "\n"
+	content += m.branchInput.View()
+	return s + inputBox.Render(content) + "\n\n" + curd.RenderHintBar(st, []curd.Hint{
+		{Key: "enter", Desc: "submit"},
+		{Key: "esc", Desc: "back"},
+	})
+}
+
 func (m CommitModel) View() string {
 	var s string
 	s += titleStyle.Render("📦 Commit & Push") + "\n\n"
 
 	switch m.step {
 	case commitStepMessage:
-		var content string
-		content += prLabelStyle.Render("Commit message") + "\n"
-		content += m.messageInput.View()
-		if len(m.recentMessages) > 0 {
-			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
-		}
-		s += inputBox.Render(content) + "\n\n"
-		s += curd.RenderHintBar(st, []curd.Hint{
-			{Key: "enter", Desc: "submit"},
-			{Key: "esc", Desc: "back"},
-		})
-		return s
+		return s + m.viewMessage()
 
 	case commitStepBranch:
-		s += summaryBlock(summaryLine("message", m.message))
-		var content string
-		content += prLabelStyle.Render("Branch (optional)") + "\n"
-		content += m.branchInput.View()
-		s += inputBox.Render(content) + "\n\n"
-		s += curd.RenderHintBar(st, []curd.Hint{
-			{Key: "enter", Desc: "submit"},
-			{Key: "esc", Desc: "back"},
-		})
-		return s
+		return s + m.viewBranch()
 
 	case commitStepRepoSelect:
 		parts := []string{summaryLine("message", m.message)}

@@ -11,5 +11,6 @@ permissions:
 
 jobs:
   sonarqube:
-    uses: CheeziCrew/.github/.github/workflows/sonarqube.yml@ed61fe19f6c7204683ffdffebd0c208c81334da6
-    secrets: inherit
+    uses: CheeziCrew/.github/.github/workflows/sonarqube.yml@661562b6dbb576a9b339c05c58836307a5c22aae
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

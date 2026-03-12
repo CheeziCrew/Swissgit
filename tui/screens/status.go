@@ -248,6 +248,39 @@ func formatRepoLine(r ops.StatusResult) string {
 	return line
 }
 
+func statusBanner(total, dirty, errored, clean int) string {
+	banner := stAccent.Render("Status")
+	banner += stDim.Render("  ")
+	banner += fmt.Sprintf("%d repos", total)
+	if dirty > 0 {
+		banner += stDim.Render("  ") + stModified.Render(fmt.Sprintf("⚡ %d dirty", dirty))
+	}
+	if errored > 0 {
+		banner += stDim.Render("  ") + stErr.Render(fmt.Sprintf("✗ %d errors", errored))
+	}
+	if clean > 0 {
+		banner += stDim.Render("  ") + stClean.Render(fmt.Sprintf("✓ %d clean", clean))
+	}
+	return banner
+}
+
+func renderStatusErrors(errored []ops.StatusResult) string {
+	if len(errored) == 0 {
+		return ""
+	}
+	stErrName := lipgloss.NewStyle().Bold(true).Foreground(colorFg)
+	var content string
+	for _, r := range errored {
+		content += fmt.Sprintf("  %s %s\n", stErr.Render("✗"), stErrName.Render(r.RepoName))
+		content += fmt.Sprintf("    %s\n", stDim.Render(r.Error))
+	}
+	return stErrorBox.Render(strings.TrimRight(content, "\n")) + "\n\n"
+}
+
+func isDirtyRepo(r ops.StatusResult) bool {
+	return !r.Clean || r.Branch != r.DefaultBranch || r.Ahead > 0 || r.Behind > 0
+}
+
 func (m StatusModel) renderResults() string {
 	sorted := make([]ops.StatusResult, len(m.results))
 	copy(sorted, m.results)
@@ -264,7 +297,7 @@ func (m StatusModel) renderResults() string {
 		switch {
 		case r.Error != "":
 			errored = append(errored, r)
-		case !r.Clean || r.Branch != r.DefaultBranch || r.Ahead > 0 || r.Behind > 0:
+		case isDirtyRepo(r):
 			dirty = append(dirty, r)
 		default:
 			clean = append(clean, r)
@@ -272,52 +305,23 @@ func (m StatusModel) renderResults() string {
 	}
 
 	var s string
+	s += stSummaryBox.Render(statusBanner(len(sorted), len(dirty), len(errored), len(clean))) + "\n\n"
+	s += renderStatusErrors(errored)
 
-	// Summary banner
-	banner := stAccent.Render("Status")
-	banner += stDim.Render("  ")
-	banner += fmt.Sprintf("%d repos", len(sorted))
-	if len(dirty) > 0 {
-		banner += stDim.Render("  ") + stModified.Render(fmt.Sprintf("⚡ %d dirty", len(dirty)))
-	}
-	if len(errored) > 0 {
-		banner += stDim.Render("  ") + stErr.Render(fmt.Sprintf("✗ %d errors", len(errored)))
-	}
-	if len(clean) > 0 {
-		banner += stDim.Render("  ") + stClean.Render(fmt.Sprintf("✓ %d clean", len(clean)))
-	}
-	s += stSummaryBox.Render(banner) + "\n\n"
-
-	// Errors first
-	if len(errored) > 0 {
-		stErrName := lipgloss.NewStyle().Bold(true).Foreground(colorFg)
-		var content string
-		for _, r := range errored {
-			content += fmt.Sprintf("  %s %s\n", stErr.Render("✗"), stErrName.Render(r.RepoName))
-			content += fmt.Sprintf("    %s\n", stDim.Render(r.Error))
-		}
-		content = strings.TrimRight(content, "\n")
-		s += stErrorBox.Render(content) + "\n\n"
-	}
-
-	// Dirty repos — the interesting stuff
 	if len(dirty) > 0 {
 		var content string
 		for _, r := range dirty {
 			content += "  " + formatRepoLine(r) + "\n"
 		}
-		content = strings.TrimRight(content, "\n")
-		s += stDirtyBox.Render(content) + "\n\n"
+		s += stDirtyBox.Render(strings.TrimRight(content, "\n")) + "\n\n"
 	}
 
-	// Clean repos — compact
 	if len(clean) > 0 {
 		var content string
 		for _, r := range clean {
 			content += fmt.Sprintf("  %s %s\n", stClean.Render("✓"), stDim.Render(r.RepoName))
 		}
-		content = strings.TrimRight(content, "\n")
-		s += stCleanBox.Render(content) + "\n"
+		s += stCleanBox.Render(strings.TrimRight(content, "\n")) + "\n"
 	}
 
 	return s

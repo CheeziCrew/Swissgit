@@ -204,39 +204,44 @@ func (m TeamPRsModel) fetchTeamRepos() tea.Cmd {
 	}
 }
 
+func (m *TeamPRsModel) showResult(content string) {
+	m.step = teamPRsStepResults
+	m.viewport.SetContent(content)
+}
+
+func (m TeamPRsModel) handleReposFetched(msg teamPRsReposFetchedMsg) (TeamPRsModel, tea.Cmd) {
+	if msg.err != nil {
+		m.showResult(tpDim.Render(fmt.Sprintf("Failed to fetch team repos: %s", msg.err)))
+		return m, nil
+	}
+	if len(msg.repos) == 0 {
+		m.showResult(tpDim.Render("No repos found for this team."))
+		return m, nil
+	}
+	m.fetchMsg = fmt.Sprintf("Found %d repos, searching PRs…", len(msg.repos))
+	return m, m.fetchPRs(msg.repos)
+}
+
+func (m TeamPRsModel) handlePRsFetched(msg teamPRsFetchedMsg) (TeamPRsModel, tea.Cmd) {
+	if msg.err != nil {
+		m.showResult(tpDim.Render(fmt.Sprintf("Failed to fetch PRs: %s", msg.err)))
+		return m, nil
+	}
+	m.prs = msg.prs
+	m.showResult(m.renderTable())
+	return m, nil
+}
+
 func (m TeamPRsModel) updateFetching(msg tea.Msg) (TeamPRsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case teamPRsReposFetchedMsg:
-		if msg.err != nil {
-			m.step = teamPRsStepResults
-			m.viewport.SetContent(tpDim.Render(fmt.Sprintf("Failed to fetch team repos: %s", msg.err)))
-			return m, nil
-		}
-		if len(msg.repos) == 0 {
-			m.step = teamPRsStepResults
-			m.viewport.SetContent(tpDim.Render("No repos found for this team."))
-			return m, nil
-		}
-
-		m.fetchMsg = fmt.Sprintf("Found %d repos, searching PRs…", len(msg.repos))
-		return m, m.fetchPRs(msg.repos)
-
+		return m.handleReposFetched(msg)
 	case teamPRsFetchedMsg:
-		if msg.err != nil {
-			m.step = teamPRsStepResults
-			m.viewport.SetContent(tpDim.Render(fmt.Sprintf("Failed to fetch PRs: %s", msg.err)))
-			return m, nil
-		}
-		m.prs = msg.prs
-		m.step = teamPRsStepResults
-		m.viewport.SetContent(m.renderTable())
-		return m, nil
-
+		return m.handlePRsFetched(msg)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
-
 	case tea.KeyPressMsg:
 		if key.Matches(msg, key.NewBinding(key.WithKeys("esc"))) {
 			return m, func() tea.Msg { return BackToMenuMsg{} }

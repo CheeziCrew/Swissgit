@@ -124,6 +124,28 @@ func (m PullRequestModel) Update(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	return m, nil
 }
 
+func (m *PullRequestModel) browseHistoryUp() {
+	if m.historyCursor == -1 {
+		m.typedValue = m.messageInput.Value()
+	}
+	m.historyCursor++
+	if m.historyCursor >= len(m.recentMessages) {
+		m.historyCursor = len(m.recentMessages) - 1
+	}
+	m.messageInput.SetValue(m.recentMessages[m.historyCursor])
+	m.messageInput.CursorEnd()
+}
+
+func (m *PullRequestModel) browseHistoryDown() {
+	m.historyCursor--
+	if m.historyCursor < 0 {
+		m.messageInput.SetValue(m.typedValue)
+	} else {
+		m.messageInput.SetValue(m.recentMessages[m.historyCursor])
+	}
+	m.messageInput.CursorEnd()
+}
+
 func (m PullRequestModel) updateMessage(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
@@ -144,26 +166,12 @@ func (m PullRequestModel) updateMessage(msg tea.Msg) (PullRequestModel, tea.Cmd)
 			return m, func() tea.Msg { return BackToMenuMsg{} }
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up"))):
 			if len(m.recentMessages) > 0 {
-				if m.historyCursor == -1 {
-					m.typedValue = m.messageInput.Value()
-				}
-				m.historyCursor++
-				if m.historyCursor >= len(m.recentMessages) {
-					m.historyCursor = len(m.recentMessages) - 1
-				}
-				m.messageInput.SetValue(m.recentMessages[m.historyCursor])
-				m.messageInput.CursorEnd()
+				m.browseHistoryUp()
 				return m, nil
 			}
 		case key.Matches(msg, key.NewBinding(key.WithKeys("down"))):
 			if m.historyCursor >= 0 {
-				m.historyCursor--
-				if m.historyCursor < 0 {
-					m.messageInput.SetValue(m.typedValue)
-				} else {
-					m.messageInput.SetValue(m.recentMessages[m.historyCursor])
-				}
-				m.messageInput.CursorEnd()
+				m.browseHistoryDown()
 				return m, nil
 			}
 		}
@@ -199,6 +207,14 @@ func (m PullRequestModel) updateBranch(msg tea.Msg) (PullRequestModel, tea.Cmd) 
 	return m, cmd
 }
 
+func (m *PullRequestModel) collectSelectedChanges() {
+	for i, ct := range m.changeTypes {
+		if m.changeSelected[i] {
+			m.changes = append(m.changes, ct)
+		}
+	}
+}
+
 func (m PullRequestModel) updateChanges(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
@@ -216,11 +232,7 @@ func (m PullRequestModel) updateChanges(msg tea.Msg) (PullRequestModel, tea.Cmd)
 		case key.Matches(msg, key.NewBinding(key.WithKeys("space"))):
 			m.changeSelected[m.changeCursor] = !m.changeSelected[m.changeCursor]
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
-			for i, ct := range m.changeTypes {
-				if m.changeSelected[i] {
-					m.changes = append(m.changes, ct)
-				}
-			}
+			m.collectSelectedChanges()
 			m.step = prStepBreaking
 			return m, nil
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
@@ -352,6 +364,57 @@ func (m PullRequestModel) updateResults(msg tea.Msg) (PullRequestModel, tea.Cmd)
 	return m, cmd
 }
 
+func (m PullRequestModel) viewChanges() string {
+	s := m.showSummary()
+	s += prLabelStyle.Render("What changes does this contain?") + "\n\n"
+	for i, ct := range m.changeTypes {
+		check := uncheckStyle.Render("○")
+		if m.changeSelected[i] {
+			check = checkStyle.Render("●")
+		}
+		if i == m.changeCursor {
+			s += menuActiveItem.Render(fmt.Sprintf(fmtTwoCol, check, menuActiveName.Render(ct))) + "\n"
+		} else {
+			s += menuInactiveItem.Render(fmt.Sprintf(fmtTwoCol, check, menuInactiveName.Render(ct))) + "\n"
+		}
+	}
+	s += curd.RenderHintBar(st, []curd.Hint{
+		{Key: "space", Desc: "toggle"},
+		{Key: "enter", Desc: "confirm"},
+		{Key: "esc", Desc: "back"},
+	})
+	return s
+}
+
+func (m PullRequestModel) viewBreaking() string {
+	type breakOption struct {
+		label string
+		desc  string
+	}
+	options := []breakOption{
+		{label: "No", desc: "safe (default)"},
+		{label: "Yes", desc: "breaking change"},
+	}
+
+	s := m.showSummary()
+	s += prLabelStyle.Render("Breaking change?") + "\n\n"
+	for i, opt := range options {
+		line := fmt.Sprintf(fmtTwoCol, menuActiveName.Render(opt.label), menuActiveDesc.Render(opt.desc))
+		if i == m.breakingCursor {
+			s += menuActiveItem.Render(line) + "\n"
+		} else {
+			inactiveLine := fmt.Sprintf(fmtTwoCol, menuInactiveName.Render(opt.label), menuInactiveDesc.Render(opt.desc))
+			s += menuInactiveItem.Render(inactiveLine) + "\n"
+		}
+	}
+	s += curd.RenderHintBar(st, []curd.Hint{
+		{Key: "j/k", Desc: "move"},
+		{Key: "enter", Desc: "select"},
+		{Key: "esc", Desc: "back"},
+	})
+	return s
+}
+
 func (m PullRequestModel) View() string {
 	var s string
 	s += titleStyle.Render("🚀 Pull Request") + "\n\n"
@@ -364,76 +427,26 @@ func (m PullRequestModel) View() string {
 		if len(m.recentMessages) > 0 {
 			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
 		}
-		s += inputBox.Render(content) + "\n\n"
-		s += curd.RenderHintBar(st, []curd.Hint{
+		return s + inputBox.Render(content) + "\n\n" + curd.RenderHintBar(st, []curd.Hint{
 			{Key: "enter", Desc: "submit"},
 			{Key: "esc", Desc: "back"},
 		})
-		return s
 
 	case prStepBranch:
 		s += m.showSummary()
 		var content string
 		content += prLabelStyle.Render("Feature branch") + "\n"
 		content += m.branchInput.View()
-		s += inputBox.Render(content) + "\n\n"
-		s += curd.RenderHintBar(st, []curd.Hint{
+		return s + inputBox.Render(content) + "\n\n" + curd.RenderHintBar(st, []curd.Hint{
 			{Key: "enter", Desc: "submit"},
 			{Key: "esc", Desc: "back"},
 		})
-		return s
 
 	case prStepChanges:
-		s += m.showSummary()
-		s += prLabelStyle.Render("What changes does this contain?") + "\n\n"
-		for i, ct := range m.changeTypes {
-			check := uncheckStyle.Render("○")
-			if m.changeSelected[i] {
-				check = checkStyle.Render("●")
-			}
-			if i == m.changeCursor {
-				line := fmt.Sprintf(fmtTwoCol, check, menuActiveName.Render(ct))
-				s += menuActiveItem.Render(line) + "\n"
-			} else {
-				line := fmt.Sprintf(fmtTwoCol, check, menuInactiveName.Render(ct))
-				s += menuInactiveItem.Render(line) + "\n"
-			}
-		}
-		s += curd.RenderHintBar(st, []curd.Hint{
-			{Key: "space", Desc: "toggle"},
-			{Key: "enter", Desc: "confirm"},
-			{Key: "esc", Desc: "back"},
-		})
-		return s
+		return s + m.viewChanges()
 
 	case prStepBreaking:
-		s += m.showSummary()
-
-		type breakOption struct {
-			label string
-			desc  string
-		}
-		options := []breakOption{
-			{label: "No", desc: "safe (default)"},
-			{label: "Yes", desc: "breaking change"},
-		}
-
-		s += prLabelStyle.Render("Breaking change?") + "\n\n"
-		for i, opt := range options {
-			line := fmt.Sprintf(fmtTwoCol, menuActiveName.Render(opt.label), menuActiveDesc.Render(opt.desc))
-			if i == m.breakingCursor {
-				s += menuActiveItem.Render(line) + "\n"
-			} else {
-				inactiveLine := fmt.Sprintf(fmtTwoCol, menuInactiveName.Render(opt.label), menuInactiveDesc.Render(opt.desc))
-				s += menuInactiveItem.Render(inactiveLine) + "\n"
-			}
-		}
-		s += curd.RenderHintBar(st, []curd.Hint{
-			{Key: "j/k", Desc: "move"},
-			{Key: "enter", Desc: "select"},
-			{Key: "esc", Desc: "back"},
-		})
-		return s
+		return s + m.viewBreaking()
 
 	case prStepRepoSelect:
 		s += m.showSummary()
@@ -449,10 +462,9 @@ func (m PullRequestModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
-		s += curd.RenderHintBar(st, []curd.Hint{
+		return s + curd.RenderHintBar(st, []curd.Hint{
 			{Key: "esc/q", Desc: "menu"},
 		})
-		return s
 	}
 
 	return s
