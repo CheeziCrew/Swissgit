@@ -10,5 +10,6 @@ permissions:
 
 jobs:
   auto-merge:
-    uses: CheeziCrew/.github/.github/workflows/dependabot-auto-merge.yml@3bd54f3d4220a13f55689c035c4d4167a1e1e41b
-    secrets: inherit
+    uses: CheeziCrew/.github/.github/workflows/dependabot-auto-merge.yml@bbc851eb23d97511231d2410f43d08857e343d2b
+    secrets:
+      APPROVE_TOKEN: ${{ secrets.APPROVE_TOKEN }}
