@@ -1,0 +1,15 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  sonarqube:
+    uses: CheeziCrew/.github/.github/workflows/sonarqube.yml@ed61fe19f6c7204683ffdffebd0c208c81334da6
+    secrets: inherit

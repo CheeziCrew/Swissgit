@@ -4,6 +4,15 @@
 
 Multi-repo Git workflows without the pain. Interactive TUI or fast CLI — your call.
 
+## Status
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=alert_status)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=reliability_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=security_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=CheeziCrew_SwissGit&metric=bugs)](https://sonarcloud.io/summary/overall?id=CheeziCrew_SwissGit)
+
 ## Quick Start
 
 Grab a binary from [Releases](https://github.com/CheeziCrew/swissgit/releases), or build it yourself:
