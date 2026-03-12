@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/CheeziCrew/curd"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -307,6 +308,11 @@ func (m CloneModel) View() string {
 		}
 
 		s += inputBox.Render(content)
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "tab", Desc: "next"},
+			{Key: "enter", Desc: "submit"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case cloneStepProgress:
@@ -318,6 +324,9 @@ func (m CloneModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "esc/q", Desc: "menu"},
+		})
 		return s
 	}
 

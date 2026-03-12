@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/CheeziCrew/curd"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -362,6 +363,10 @@ func (m PullRequestModel) View() string {
 			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
 		}
 		s += inputBox.Render(content) + "\n\n"
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "enter", Desc: "submit"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case prStepBranch:
@@ -370,6 +375,10 @@ func (m PullRequestModel) View() string {
 		content += prLabelStyle.Render("Feature branch") + "\n"
 		content += m.branchInput.View()
 		s += inputBox.Render(content) + "\n\n"
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "enter", Desc: "submit"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case prStepChanges:
@@ -388,6 +397,11 @@ func (m PullRequestModel) View() string {
 				s += menuInactiveItem.Render(line) + "\n"
 			}
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "space", Desc: "toggle"},
+			{Key: "enter", Desc: "confirm"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case prStepBreaking:
@@ -412,6 +426,11 @@ func (m PullRequestModel) View() string {
 				s += menuInactiveItem.Render(inactiveLine) + "\n"
 			}
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "j/k", Desc: "move"},
+			{Key: "enter", Desc: "select"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case prStepRepoSelect:
@@ -428,6 +447,9 @@ func (m PullRequestModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "esc/q", Desc: "menu"},
+		})
 		return s
 	}
 
