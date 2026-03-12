@@ -26,6 +26,8 @@ const (
 	prStepResults
 )
 
+const fmtTwoCol = "%s  %s"
+
 // prTaskDoneMsg is sent when a single repo's PR task finishes.
 type prTaskDoneMsg struct {
 	index  int
@@ -390,10 +392,10 @@ func (m PullRequestModel) View() string {
 				check = checkStyle.Render("●")
 			}
 			if i == m.changeCursor {
-				line := fmt.Sprintf("%s  %s", check, menuActiveName.Render(ct))
+				line := fmt.Sprintf(fmtTwoCol, check, menuActiveName.Render(ct))
 				s += menuActiveItem.Render(line) + "\n"
 			} else {
-				line := fmt.Sprintf("%s  %s", check, menuInactiveName.Render(ct))
+				line := fmt.Sprintf(fmtTwoCol, check, menuInactiveName.Render(ct))
 				s += menuInactiveItem.Render(line) + "\n"
 			}
 		}
@@ -418,11 +420,11 @@ func (m PullRequestModel) View() string {
 
 		s += prLabelStyle.Render("Breaking change?") + "\n\n"
 		for i, opt := range options {
-			line := fmt.Sprintf("%s  %s", menuActiveName.Render(opt.label), menuActiveDesc.Render(opt.desc))
+			line := fmt.Sprintf(fmtTwoCol, menuActiveName.Render(opt.label), menuActiveDesc.Render(opt.desc))
 			if i == m.breakingCursor {
 				s += menuActiveItem.Render(line) + "\n"
 			} else {
-				inactiveLine := fmt.Sprintf("%s  %s", menuInactiveName.Render(opt.label), menuInactiveDesc.Render(opt.desc))
+				inactiveLine := fmt.Sprintf(fmtTwoCol, menuInactiveName.Render(opt.label), menuInactiveDesc.Render(opt.desc))
 				s += menuInactiveItem.Render(inactiveLine) + "\n"
 			}
 		}

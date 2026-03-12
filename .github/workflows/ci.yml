@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     uses: CheeziCrew/.github/.github/workflows/ci.yml@3bd54f3d4220a13f55689c035c4d4167a1e1e41b

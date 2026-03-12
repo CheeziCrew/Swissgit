@@ -27,7 +27,7 @@ func init() {
 		return
 	}
 	envPath := filepath.Join(filepath.Dir(exePath), ".env")
-	if err := godotenv.Load(envPath); err != nil {
+	if godotenv.Load(envPath) != nil {
 		log.Printf("No .env file found at %s. Using environment variables from the system.\n", envPath)
 	}
 }

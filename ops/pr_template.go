@@ -1,7 +1,7 @@
 package ops
 
 import (
-	_ "embed"
+	_ "embed" // embed is used for go:embed directives
 	"fmt"
 	"strings"
 )

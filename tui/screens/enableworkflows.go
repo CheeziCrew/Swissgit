@@ -26,6 +26,8 @@ const (
 	enableWFStepResults
 )
 
+const enableWorkflowsTitle = "Enable Workflows"
+
 type enableWFReposFetchedMsg struct {
 	repos []string
 	err   error
@@ -185,7 +187,7 @@ func (m EnableWorkflowsModel) updateFetching(msg tea.Msg) (EnableWorkflowsModel,
 				Status: components.TaskFailed,
 				Error:  msg.err.Error(),
 			}}
-			m.results = components.NewResultModel("Enable Workflows", tasks)
+			m.results = components.NewResultModel(enableWorkflowsTitle, tasks)
 			m.step = enableWFStepResults
 			m.viewport.SetContent(m.results.View())
 			return m, nil
@@ -197,7 +199,7 @@ func (m EnableWorkflowsModel) updateFetching(msg tea.Msg) (EnableWorkflowsModel,
 				Status: components.TaskDone,
 				Result: "no repos found in org",
 			}}
-			m.results = components.NewResultModel("Enable Workflows", tasks)
+			m.results = components.NewResultModel(enableWorkflowsTitle, tasks)
 			m.step = enableWFStepResults
 			m.viewport.SetContent(m.results.View())
 			return m, nil
@@ -278,7 +280,7 @@ func (m EnableWorkflowsModel) updateProgress(msg tea.Msg) (EnableWorkflowsModel,
 		return m, cmd
 
 	case components.AllTasksDoneMsg:
-		m.results = components.NewResultModel("Enable Workflows", m.progress.Tasks)
+		m.results = components.NewResultModel(enableWorkflowsTitle, m.progress.Tasks)
 		m.step = enableWFStepResults
 		m.viewport.SetContent(m.results.View())
 		return m, nil

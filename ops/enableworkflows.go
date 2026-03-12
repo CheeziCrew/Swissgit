@@ -17,6 +17,11 @@ type EnableWorkflowResult struct {
 	Error           string
 }
 
+const (
+	flagJSON = "--json"
+	flagRepo = "--repo"
+)
+
 type ghWorkflow struct {
 	Name  string `json:"name"`
 	ID    int    `json:"id"`
@@ -28,7 +33,7 @@ func FetchOrgRepoNames(org string) ([]string, error) {
 	cmd := exec.Command("gh", "repo", "list", org,
 		"--limit", "500",
 		"--no-archived",
-		"--json", "name",
+		flagJSON, "name",
 		"-q", ".[].name",
 	)
 
@@ -37,7 +42,7 @@ func FetchOrgRepoNames(org string) ([]string, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 
-	if err := cmd.Run(); err != nil {
+	if cmd.Run() != nil {
 		return nil, fmt.Errorf("gh repo list failed: %s", strings.TrimSpace(errBuf.String()))
 	}
 
@@ -59,9 +64,9 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 	fullRepo := fmt.Sprintf("%s/%s", org, repo)
 
 	cmd := exec.Command("gh", "workflow", "list",
-		"--repo", fullRepo,
+		flagRepo, fullRepo,
 		"--all",
-		"--json", "name,id,state",
+		flagJSON, "name,id,state",
 	)
 
 	var out bytes.Buffer
@@ -69,7 +74,7 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 
-	if err := cmd.Run(); err != nil {
+	if cmd.Run() != nil {
 		result.Error = fmt.Sprintf("list workflows failed: %s", strings.TrimSpace(errBuf.String()))
 		return result
 	}
@@ -95,7 +100,7 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 
 		enableCmd := exec.Command("gh", "workflow", "enable",
 			fmt.Sprintf("%d", wf.ID),
-			"--repo", fullRepo,
+			flagRepo, fullRepo,
 		)
 		if err := enableCmd.Run(); err != nil {
 			result.Error = fmt.Sprintf("failed to enable workflow %q: %s", wf.Name, err)
@@ -125,10 +130,10 @@ type ghPR struct {
 
 func retriggerPRs(fullRepo, headBranch string) (int, error) {
 	cmd := exec.Command("gh", "pr", "list",
-		"--repo", fullRepo,
+		flagRepo, fullRepo,
 		"--head", headBranch,
 		"--state", "open",
-		"--json", "number",
+		flagJSON, "number",
 	)
 
 	var out bytes.Buffer
@@ -149,12 +154,12 @@ func retriggerPRs(fullRepo, headBranch string) (int, error) {
 
 	retriggered := 0
 	for _, pr := range prs {
-		closeCmd := exec.Command("gh", "pr", "close", fmt.Sprintf("%d", pr.Number), "--repo", fullRepo)
+		closeCmd := exec.Command("gh", "pr", "close", fmt.Sprintf("%d", pr.Number), flagRepo, fullRepo)
 		if err := closeCmd.Run(); err != nil {
 			return retriggered, fmt.Errorf("close PR #%d: %s", pr.Number, err)
 		}
 
-		reopenCmd := exec.Command("gh", "pr", "reopen", fmt.Sprintf("%d", pr.Number), "--repo", fullRepo)
+		reopenCmd := exec.Command("gh", "pr", "reopen", fmt.Sprintf("%d", pr.Number), flagRepo, fullRepo)
 		if err := reopenCmd.Run(); err != nil {
 			return retriggered, fmt.Errorf("reopen PR #%d: %s", pr.Number, err)
 		}

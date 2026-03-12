@@ -9,7 +9,7 @@ import (
 
 // DefaultBranch detects the default branch for a repo.
 // Tries origin/HEAD first, then common branch names, then the current branch.
-func DefaultBranch(repoPath string, fallback string) string {
+func DefaultBranch(repoPath, fallback string) string {
 	// Try origin/HEAD (set by regular git clone)
 	cmd := exec.Command("git", "-C", repoPath, "symbolic-ref", "refs/remotes/origin/HEAD")
 	output, err := cmd.Output()

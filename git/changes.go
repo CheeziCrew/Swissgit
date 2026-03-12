@@ -59,19 +59,23 @@ func CountChangesShell(repoPath string) (Changes, error) {
 		if len(line) < 2 {
 			continue
 		}
-		x, y := line[0], line[1]
-		if x == '?' || y == '?' {
-			c.Untracked++
-		}
-		if x == 'M' || y == 'M' {
-			c.Modified++
-		}
-		if x == 'A' || y == 'A' || x == 'R' || y == 'R' || x == 'C' || y == 'C' {
-			c.Added++
-		}
-		if x == 'D' || y == 'D' {
-			c.Deleted++
-		}
+		classifyStatusLine(line[0], line[1], &c)
 	}
 	return c, nil
+}
+
+// classifyStatusLine classifies a single porcelain status line by its X and Y indicators.
+func classifyStatusLine(x, y byte, c *Changes) {
+	if x == '?' || y == '?' {
+		c.Untracked++
+	}
+	if x == 'M' || y == 'M' {
+		c.Modified++
+	}
+	if x == 'A' || y == 'A' || x == 'R' || y == 'R' || x == 'C' || y == 'C' {
+		c.Added++
+	}
+	if x == 'D' || y == 'D' {
+		c.Deleted++
+	}
 }

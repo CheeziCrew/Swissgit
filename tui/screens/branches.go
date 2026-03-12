@@ -218,8 +218,12 @@ func hasExtraBranches(r ops.BranchesResult) bool {
 	return len(r.RemoteBranches) > 0
 }
 
-const maxBranchesShown = 3
-const maxBranchNameLen = 40
+const (
+	maxBranchesShown = 3
+	maxBranchNameLen = 40
+	fmtIndentStr     = "    %s\n"
+	fmtNameBranch    = "  %s %s\n"
+)
 
 func truncateBranchName(name string) string {
 	if len(name) <= maxBranchNameLen {
@@ -228,15 +232,36 @@ func truncateBranchName(name string) string {
 	return name[:maxBranchNameLen-1] + "…"
 }
 
+func renderBranchList(branches []ops.BranchInfo, label string, defaultStyle lipgloss.Style, category string) string {
+	if len(branches) == 0 {
+		return ""
+	}
+	var s string
+	shown := branches
+	if len(shown) > maxBranchesShown {
+		shown = shown[:maxBranchesShown]
+	}
+	for _, b := range shown {
+		style := defaultStyle
+		if b.IsStale {
+			style = brStaleStyle
+		}
+		s += fmt.Sprintf("    %s %s\n", brLabel.Render(label), style.Render(truncateBranchName(b.Name)))
+	}
+	if len(branches) > maxBranchesShown {
+		s += fmt.Sprintf(fmtIndentStr, brDim.Render(fmt.Sprintf("  +%d more %s", len(branches)-maxBranchesShown, category)))
+	}
+	return s
+}
+
 func formatBranchEntry(r ops.BranchesResult) string {
 	currentStyle := brCurrent
 	if r.CurrentBranch != r.DefaultBranch {
 		currentStyle = lipgloss.NewStyle().Foreground(colorRed).Bold(true)
 	}
 
-	s := fmt.Sprintf("  %s %s\n", brRepoName.Render(r.RepoName), currentStyle.Render("["+r.CurrentBranch+"]"))
+	s := fmt.Sprintf(fmtNameBranch, brRepoName.Render(r.RepoName), currentStyle.Render("["+r.CurrentBranch+"]"))
 
-	// Collect local branches (skip default)
 	var local []ops.BranchInfo
 	for _, b := range r.LocalBranches {
 		if b.Name != r.DefaultBranch {
@@ -244,44 +269,39 @@ func formatBranchEntry(r ops.BranchesResult) string {
 		}
 	}
 
-	// Render local
-	if len(local) > 0 {
-		shown := local
-		if len(shown) > maxBranchesShown {
-			shown = shown[:maxBranchesShown]
-		}
-		for _, b := range shown {
-			style := brLocalStyle
-			if b.IsStale {
-				style = brStaleStyle
-			}
-			s += fmt.Sprintf("    %s %s\n", brLabel.Render("L"), style.Render(truncateBranchName(b.Name)))
-		}
-		if len(local) > maxBranchesShown {
-			s += fmt.Sprintf("    %s\n", brDim.Render(fmt.Sprintf("  +%d more local", len(local)-maxBranchesShown)))
-		}
-	}
-
-	// Render remote
-	remote := r.RemoteBranches
-	if len(remote) > 0 {
-		shown := remote
-		if len(shown) > maxBranchesShown {
-			shown = shown[:maxBranchesShown]
-		}
-		for _, b := range shown {
-			style := brRemoteStyle
-			if b.IsStale {
-				style = brStaleStyle
-			}
-			s += fmt.Sprintf("    %s %s\n", brLabel.Render("R"), style.Render(truncateBranchName(b.Name)))
-		}
-		if len(remote) > maxBranchesShown {
-			s += fmt.Sprintf("    %s\n", brDim.Render(fmt.Sprintf("  +%d more remote", len(remote)-maxBranchesShown)))
-		}
-	}
+	s += renderBranchList(local, "L", brLocalStyle, "local")
+	s += renderBranchList(r.RemoteBranches, "R", brRemoteStyle, "remote")
 
 	return s
+}
+
+func branchesBanner(total, interesting, errored, clean int) string {
+	banner := brAccent.Render("Branches")
+	banner += brDim.Render("  ")
+	banner += fmt.Sprintf("%d repos", total)
+	if interesting > 0 {
+		banner += brDim.Render("  ") + brRemoteStyle.Render(fmt.Sprintf("⚡ %d with branches", interesting))
+	}
+	if errored > 0 {
+		banner += brDim.Render("  ") + stErr.Render(fmt.Sprintf("✗ %d errors", errored))
+	}
+	if clean > 0 {
+		banner += brDim.Render("  ") + brDim.Render(fmt.Sprintf("✓ %d clean", clean))
+	}
+	return banner
+}
+
+func renderBranchErrors(errored []ops.BranchesResult, boxW int) string {
+	if len(errored) == 0 {
+		return ""
+	}
+	brErrName := lipgloss.NewStyle().Bold(true).Foreground(colorFg)
+	var content string
+	for _, r := range errored {
+		content += fmt.Sprintf(fmtNameBranch, stErr.Render("✗"), brErrName.Render(r.RepoName))
+		content += fmt.Sprintf(fmtIndentStr, brDim.Render(r.Error))
+	}
+	return brErrorBox.MaxWidth(boxW).Render(strings.TrimRight(content, "\n")) + "\n\n"
 }
 
 func (m BranchesModel) renderResults() string {
@@ -307,59 +327,29 @@ func (m BranchesModel) renderResults() string {
 		}
 	}
 
-	var s string
-
-	// Summary banner
-	banner := brAccent.Render("Branches")
-	banner += brDim.Render("  ")
-	banner += fmt.Sprintf("%d repos", len(sorted))
-	if len(interesting) > 0 {
-		banner += brDim.Render("  ") + brRemoteStyle.Render(fmt.Sprintf("⚡ %d with branches", len(interesting)))
-	}
-	if len(errored) > 0 {
-		banner += brDim.Render("  ") + stErr.Render(fmt.Sprintf("✗ %d errors", len(errored)))
-	}
-	if len(clean) > 0 {
-		banner += brDim.Render("  ") + brDim.Render(fmt.Sprintf("✓ %d clean", len(clean)))
-	}
-	s += brSummaryBox.Render(banner) + "\n\n"
-
-	// Max box width to prevent wrapping
 	boxW := m.width - 6
 	if boxW < 40 {
 		boxW = 40
 	}
 
-	// Errors first
-	if len(errored) > 0 {
-		brErrName := lipgloss.NewStyle().Bold(true).Foreground(colorFg)
-		var content string
-		for _, r := range errored {
-			content += fmt.Sprintf("  %s %s\n", stErr.Render("✗"), brErrName.Render(r.RepoName))
-			content += fmt.Sprintf("    %s\n", brDim.Render(r.Error))
-		}
-		content = strings.TrimRight(content, "\n")
-		s += brErrorBox.MaxWidth(boxW).Render(content) + "\n\n"
-	}
+	var s string
+	s += brSummaryBox.Render(branchesBanner(len(sorted), len(interesting), len(errored), len(clean))) + "\n\n"
+	s += renderBranchErrors(errored, boxW)
 
-	// Repos with extra branches — the interesting stuff
 	if len(interesting) > 0 {
 		var content string
 		for _, r := range interesting {
 			content += formatBranchEntry(r)
 		}
-		content = strings.TrimRight(content, "\n")
-		s += brDirtyBox.MaxWidth(boxW).Render(content) + "\n\n"
+		s += brDirtyBox.MaxWidth(boxW).Render(strings.TrimRight(content, "\n")) + "\n\n"
 	}
 
-	// Clean repos — just default branch, compact
 	if len(clean) > 0 {
 		var content string
 		for _, r := range clean {
-			content += fmt.Sprintf("  %s %s\n", brDim.Render("✓"), brDim.Render(r.RepoName))
+			content += fmt.Sprintf(fmtNameBranch, brDim.Render("✓"), brDim.Render(r.RepoName))
 		}
-		content = strings.TrimRight(content, "\n")
-		s += brCleanBox.MaxWidth(boxW).Render(content) + "\n"
+		s += brCleanBox.MaxWidth(boxW).Render(strings.TrimRight(content, "\n")) + "\n"
 	}
 
 	return s

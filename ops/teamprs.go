@@ -47,7 +47,7 @@ func FetchTeamRepoNames(org, team string, excludePrefixes []string) ([]string, e
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 
-	if err := cmd.Run(); err != nil {
+	if cmd.Run() != nil {
 		return nil, fmt.Errorf("gh api failed: %s", strings.TrimSpace(errBuf.String()))
 	}
 
@@ -80,7 +80,7 @@ func FetchTeamPRs(org string, teamRepos []string) ([]TeamPR, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 
-	if err := cmd.Run(); err != nil {
+	if cmd.Run() != nil {
 		return nil, fmt.Errorf("gh search failed: %s", strings.TrimSpace(errBuf.String()))
 	}
 

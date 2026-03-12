@@ -47,7 +47,7 @@ func FetchMyPRs() ([]MyPR, error) {
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 
-	if err := cmd.Run(); err != nil {
+	if cmd.Run() != nil {
 		return nil, fmt.Errorf("gh search failed: %s", strings.TrimSpace(errBuf.String()))
 	}
 

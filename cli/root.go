@@ -13,6 +13,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	descGitHubOrg    = "GitHub org"
+	fmtStatusLine    = " %s %s %s\n"
+	descProcessRepos = "Process all repos"
+)
+
 var (
 	ok   = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✔")
 	fail = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("✗")
@@ -88,7 +94,7 @@ func commitCLICmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&message, "message", "m", "", "Commit message")
 	cmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch (optional)")
-	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Process all repos")
+	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, descProcessRepos)
 	cmd.MarkFlagRequired("message")
 
 	return cmd
@@ -131,10 +137,30 @@ func cleanupCLICmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&dropChanges, "drop", "d", false, "Drop uncommitted changes")
-	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Process all repos")
+	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, descProcessRepos)
 	cmd.Flags().StringVar(&defaultBranch, "default-branch", "main", "Default branch name")
 
 	return cmd
+}
+
+func printStatusResult(r ops.StatusResult) {
+	fmt.Printf(" %s %s [%s]", ok, r.RepoName, r.Branch)
+	if r.Ahead > 0 || r.Behind > 0 {
+		fmt.Printf(" %d↑/%d↓", r.Ahead, r.Behind)
+	}
+	if r.Modified > 0 {
+		fmt.Printf(" ~%d", r.Modified)
+	}
+	if r.Added > 0 {
+		fmt.Printf(" +%d", r.Added)
+	}
+	if r.Deleted > 0 {
+		fmt.Printf(" -%d", r.Deleted)
+	}
+	if r.Untracked > 0 {
+		fmt.Printf(" ?%d", r.Untracked)
+	}
+	fmt.Println()
 }
 
 func statusCLICmd() *cobra.Command {
@@ -166,26 +192,10 @@ func statusCLICmd() *cobra.Command {
 					continue
 				}
 				if r.Error != "" {
-					fmt.Printf(" %s %s %s\n", fail, r.RepoName, r.Error)
+					fmt.Printf(fmtStatusLine, fail, r.RepoName, r.Error)
 					continue
 				}
-				fmt.Printf(" %s %s [%s]", ok, r.RepoName, r.Branch)
-				if r.Ahead > 0 || r.Behind > 0 {
-					fmt.Printf(" %d↑/%d↓", r.Ahead, r.Behind)
-				}
-				if r.Modified > 0 {
-					fmt.Printf(" ~%d", r.Modified)
-				}
-				if r.Added > 0 {
-					fmt.Printf(" +%d", r.Added)
-				}
-				if r.Deleted > 0 {
-					fmt.Printf(" -%d", r.Deleted)
-				}
-				if r.Untracked > 0 {
-					fmt.Printf(" ?%d", r.Untracked)
-				}
-				fmt.Println()
+				printStatusResult(r)
 			}
 			return nil
 		},
@@ -208,7 +218,7 @@ func branchesCLICmd() *cobra.Command {
 			for _, p := range paths {
 				r := ops.GetBranches(p)
 				if r.Error != "" {
-					fmt.Printf(" %s %s %s\n", fail, r.RepoName, r.Error)
+					fmt.Printf(fmtStatusLine, fail, r.RepoName, r.Error)
 					continue
 				}
 				var local, remote []string
@@ -260,7 +270,7 @@ func cloneCLICmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&repoURL, "repo", "r", "", "Repo SSH URL")
-	cmd.Flags().StringVarP(&orgName, "org", "o", "", "GitHub org")
+	cmd.Flags().StringVarP(&orgName, "org", "o", "", descGitHubOrg)
 	cmd.Flags().StringVarP(&teamName, "team", "t", "", "Team within org")
 	cmd.Flags().StringVarP(&destPath, "path", "p", ".", "Destination")
 
@@ -289,10 +299,79 @@ func automergeCLICmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&target, "target", "t", "", "PR search target")
-	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Process all repos")
+	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, descProcessRepos)
 	cmd.MarkFlagRequired("target")
 
 	return cmd
+}
+
+type mergeConfig struct {
+	org       string
+	dryRun    bool
+	batchSize int
+	waitMin   int
+}
+
+func runMergePRs(cfg mergeConfig) error {
+	merged, failed := 0, 0
+	batch := 0
+
+	for {
+		prs, err := ops.FetchApprovedPRs(cfg.org)
+		if err != nil {
+			return err
+		}
+		if len(prs) == 0 {
+			printNoPRsMessage(batch)
+			break
+		}
+
+		end := min(cfg.batchSize, len(prs))
+		batch++
+		fmt.Printf("\nBatch %d — %d approved PR(s), merging %d\n", batch, len(prs), end)
+
+		m, f := processMergeBatch(cfg, prs[:end])
+		merged += m
+		failed += f
+
+		if cfg.dryRun {
+			break
+		}
+
+		fmt.Printf("\nWaiting %d minutes before next batch…\n", cfg.waitMin)
+		time.Sleep(time.Duration(cfg.waitMin) * time.Minute)
+	}
+
+	if !cfg.dryRun && batch > 0 {
+		fmt.Printf("\n=== Summary ===\nMerged: %d\nFailed: %d\n", merged, failed)
+	}
+	return nil
+}
+
+func printNoPRsMessage(batch int) {
+	if batch == 0 {
+		fmt.Println("No approved PRs found.")
+	} else {
+		fmt.Println("\nNo more approved PRs.")
+	}
+}
+
+func processMergeBatch(cfg mergeConfig, prs []ops.PRInfo) (merged, failed int) {
+	for _, pr := range prs {
+		name := fmt.Sprintf("%s #%d", pr.Repo, pr.Number)
+		if cfg.dryRun {
+			fmt.Printf(fmtStatusLine, ok, name, dim.Render(pr.Title))
+			continue
+		}
+		result := ops.MergePR(cfg.org, pr.Repo, pr.Number)
+		printResult(name, result.Success, pr.Title, result.Error)
+		if result.Success {
+			merged++
+		} else {
+			failed++
+		}
+	}
+	return merged, failed
 }
 
 func mergePRsCLICmd() *cobra.Command {
@@ -304,61 +383,16 @@ func mergePRsCLICmd() *cobra.Command {
 		Use:   "merge-prs",
 		Short: "Merge approved pull requests in batches",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			merged, failed := 0, 0
-			batch := 0
-
-			for {
-				prs, err := ops.FetchApprovedPRs(orgName)
-				if err != nil {
-					return err
-				}
-				if len(prs) == 0 {
-					if batch == 0 {
-						fmt.Println("No approved PRs found.")
-					} else {
-						fmt.Println("\nNo more approved PRs.")
-					}
-					break
-				}
-
-				end := batchSize
-				if end > len(prs) {
-					end = len(prs)
-				}
-				batch++
-				fmt.Printf("\nBatch %d — %d approved PR(s), merging %d\n", batch, len(prs), end)
-
-				for _, pr := range prs[:end] {
-					name := fmt.Sprintf("%s #%d", pr.Repo, pr.Number)
-					if dryRun {
-						fmt.Printf(" %s %s %s\n", ok, name, dim.Render(pr.Title))
-						continue
-					}
-					result := ops.MergePR(orgName, pr.Repo, pr.Number)
-					printResult(name, result.Success, pr.Title, result.Error)
-					if result.Success {
-						merged++
-					} else {
-						failed++
-					}
-				}
-
-				if dryRun {
-					break
-				}
-
-				fmt.Printf("\nWaiting %d minutes before next batch…\n", waitMin)
-				time.Sleep(time.Duration(waitMin) * time.Minute)
-			}
-
-			if !dryRun && batch > 0 {
-				fmt.Printf("\n=== Summary ===\nMerged: %d\nFailed: %d\n", merged, failed)
-			}
-			return nil
+			return runMergePRs(mergeConfig{
+				org:       orgName,
+				dryRun:    dryRun,
+				batchSize: batchSize,
+				waitMin:   waitMin,
+			})
 		},
 	}
 
-	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", "GitHub org")
+	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", descGitHubOrg)
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be merged")
 	cmd.Flags().IntVar(&batchSize, "batch-size", 5, "PRs per batch")
 	cmd.Flags().IntVar(&waitMin, "wait", 10, "Minutes between batches")
@@ -393,7 +427,7 @@ func enableWorkflowsCLICmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", "GitHub org")
+	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", descGitHubOrg)
 	cmd.Flags().StringVarP(&workflowName, "workflow", "w", "Call Java CI with Maven", "Workflow name to enable (empty = all)")
 	cmd.Flags().StringVar(&prBranch, "pr-branch", "", "Close/reopen PRs from this head branch to retrigger workflows")
 
@@ -433,7 +467,7 @@ func teamPRsCLICmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", "GitHub org")
+	cmd.Flags().StringVarP(&orgName, "org", "o", "Sundsvallskommun", descGitHubOrg)
 	cmd.Flags().StringVarP(&teamName, "team", "t", "team-unmasked", "Team slug")
 
 	return cmd

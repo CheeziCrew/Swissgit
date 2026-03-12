@@ -85,45 +85,17 @@ func GetOrgRepositories(orgName, teamName string) ([]Repository, error) {
 		return nil, fmt.Errorf("GITHUB_TOKEN environment variable not set")
 	}
 
-	var url string
-	if teamName != "" {
-		url = fmt.Sprintf("https://api.github.com/orgs/%s/teams/%s/repos", orgName, teamName)
-	} else {
-		url = fmt.Sprintf("https://api.github.com/orgs/%s/repos", orgName)
-	}
+	url := orgReposURL(orgName, teamName)
 
 	var allRepos []Repository
 	client := &http.Client{}
 	page := 1
 
 	for {
-		paginatedURL := fmt.Sprintf("%s?page=%d&per_page=100", url, page)
-		req, err := http.NewRequest("GET", paginatedURL, nil)
+		repos, hasNext, err := fetchRepoPage(client, url, page, accessToken)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
+			return nil, err
 		}
-
-		req.Header.Set("Authorization", "token "+accessToken)
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to make request: %w", err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			return nil, fmt.Errorf("failed to fetch repositories, status: %s", resp.Status)
-		}
-
-		var repos []Repository
-		if err := json.NewDecoder(resp.Body).Decode(&repos); err != nil {
-			resp.Body.Close()
-			return nil, fmt.Errorf("failed to decode response: %w", err)
-		}
-
-		hasNext := strings.Contains(resp.Header.Get("Link"), `rel="next"`)
-		resp.Body.Close()
-
 		for _, r := range repos {
 			if !r.Archived {
 				allRepos = append(allRepos, r)
@@ -136,4 +108,39 @@ func GetOrgRepositories(orgName, teamName string) ([]Repository, error) {
 	}
 
 	return allRepos, nil
+}
+
+func orgReposURL(orgName, teamName string) string {
+	if teamName != "" {
+		return fmt.Sprintf("https://api.github.com/orgs/%s/teams/%s/repos", orgName, teamName)
+	}
+	return fmt.Sprintf("https://api.github.com/orgs/%s/repos", orgName)
+}
+
+func fetchRepoPage(client *http.Client, baseURL string, page int, token string) ([]Repository, bool, error) {
+	paginatedURL := fmt.Sprintf("%s?page=%d&per_page=100", baseURL, page)
+	req, err := http.NewRequest("GET", paginatedURL, nil)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "token "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, false, fmt.Errorf("failed to fetch repositories, status: %s", resp.Status)
+	}
+
+	var repos []Repository
+	if err := json.NewDecoder(resp.Body).Decode(&repos); err != nil {
+		return nil, false, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	hasNext := strings.Contains(resp.Header.Get("Link"), `rel="next"`)
+	return repos, hasNext, nil
 }
