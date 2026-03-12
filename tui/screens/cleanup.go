@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/CheeziCrew/curd"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -233,6 +234,11 @@ func (m CleanupModel) View() string {
 				s += menuInactiveItem.Render(inactiveLine) + "\n"
 			}
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "j/k", Desc: "move"},
+			{Key: "enter", Desc: "select"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case cleanupStepRepoSelect:
@@ -252,6 +258,9 @@ func (m CleanupModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "esc/q", Desc: "menu"},
+		})
 		return s
 	}
 

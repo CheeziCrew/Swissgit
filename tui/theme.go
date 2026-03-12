@@ -1,25 +1,26 @@
 package tui
 
-import "charm.land/lipgloss/v2"
+import "github.com/CheeziCrew/curd"
 
-// Base16 ANSI colors — respects terminal theme
+// Re-export colors for backward compat in screen files that use them directly.
 var (
-	ColorRed   = lipgloss.Color("1")
-	ColorGreen = lipgloss.Color("2")
-	ColorBlue  = lipgloss.Color("4")
-	ColorMag   = lipgloss.Color("5")
-	ColorFg    = lipgloss.Color("7")
-	ColorGray  = lipgloss.Color("8")
-	ColorBrMag = lipgloss.Color("13")
+	ColorRed   = curd.ColorRed
+	ColorGreen = curd.ColorGreen
+	ColorBlue  = curd.ColorBlue
+	ColorMag   = curd.ColorMagenta
+	ColorFg    = curd.ColorFg
+	ColorGray  = curd.ColorGray
+	ColorBrMag = curd.ColorBrMag
 )
 
-// Styles
+// App palette and derived styles.
 var (
-	TitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(ColorBrMag).
-			MarginBottom(1)
+	AppPalette = curd.SwissgitPalette
+	Styles     = AppPalette.Styles()
+)
 
-	HelpStyle = lipgloss.NewStyle().
-			Foreground(ColorGray)
+// Backward-compat style aliases.
+var (
+	TitleStyle = Styles.Title
+	HelpStyle  = Styles.HelpMargin
 )

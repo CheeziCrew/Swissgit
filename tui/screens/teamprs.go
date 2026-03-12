@@ -12,6 +12,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/CheeziCrew/curd"
 
 	"github.com/CheeziCrew/swissgit/ops"
 )
@@ -336,6 +337,11 @@ func (m TeamPRsModel) View() string {
 			content += fmt.Sprintf("%s%s\n  %s\n\n", marker, prLabelStyle.Render(label), inputs[i])
 		}
 		s += inputBox.Render(content)
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "tab", Desc: "next"},
+			{Key: "enter", Desc: "submit"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case teamPRsStepFetching:
@@ -355,6 +361,9 @@ func (m TeamPRsModel) View() string {
 		if m.viewReady {
 			s += m.viewport.View() + "\n"
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "esc/q", Desc: "menu"},
+		})
 		return s
 	}
 

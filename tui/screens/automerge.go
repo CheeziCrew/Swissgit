@@ -5,6 +5,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/CheeziCrew/curd"
 
 	"github.com/CheeziCrew/swissgit/git"
 	"github.com/CheeziCrew/swissgit/ops"
@@ -196,6 +197,10 @@ func (m AutomergeModel) View() string {
 		content += prLabelStyle.Render("PR head branch (exact match)") + "\n"
 		content += m.targetInput.View()
 		s += inputBox.Render(content) + "\n\n"
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "enter", Desc: "submit"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case automergeStepProgress:
@@ -208,6 +213,9 @@ func (m AutomergeModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "esc/q", Desc: "menu"},
+		})
 		return s
 	}
 

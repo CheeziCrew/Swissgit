@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/CheeziCrew/curd"
 
 	"github.com/CheeziCrew/swissgit/ops"
 	"github.com/CheeziCrew/swissgit/tui/components"
@@ -286,6 +287,10 @@ func (m CommitModel) View() string {
 			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
 		}
 		s += inputBox.Render(content) + "\n\n"
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "enter", Desc: "submit"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case commitStepBranch:
@@ -294,6 +299,10 @@ func (m CommitModel) View() string {
 		content += prLabelStyle.Render("Branch (optional)") + "\n"
 		content += m.branchInput.View()
 		s += inputBox.Render(content) + "\n\n"
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "enter", Desc: "submit"},
+			{Key: "esc", Desc: "back"},
+		})
 		return s
 
 	case commitStepRepoSelect:
@@ -313,6 +322,9 @@ func (m CommitModel) View() string {
 		} else {
 			s += m.results.View() + "\n"
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "esc/q", Desc: "menu"},
+		})
 		return s
 	}
 

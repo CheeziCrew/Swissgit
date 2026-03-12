@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/CheeziCrew/curd"
 
 	"github.com/CheeziCrew/swissgit/git"
 	"github.com/CheeziCrew/swissgit/ops"
@@ -378,6 +379,9 @@ func (m BranchesModel) View() string {
 		} else {
 			s += m.renderResults() + "\n"
 		}
+		s += curd.RenderHintBar(st, []curd.Hint{
+			{Key: "esc/q", Desc: "menu"},
+		})
 		return s
 	}
 
