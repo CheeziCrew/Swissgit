@@ -10,7 +10,7 @@ import (
 
 // PushChanges pushes the current branch to the remote using SSH auth.
 func PushChanges(repo *gogit.Repository) error {
-	auth, err := SSHAuth()
+	auth, err := sshAuthFunc()
 	if err != nil {
 		return fmt.Errorf("failed to set up SSH authentication: %w", err)
 	}

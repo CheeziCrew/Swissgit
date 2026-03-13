@@ -9,7 +9,7 @@ import (
 
 // PullChanges pulls changes from the remote using SSH auth.
 func PullChanges(worktree *gogit.Worktree) error {
-	auth, err := SSHAuth()
+	auth, err := sshAuthFunc()
 	if err != nil {
 		return fmt.Errorf("failed to set up SSH authentication: %w", err)
 	}

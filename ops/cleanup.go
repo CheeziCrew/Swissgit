@@ -2,7 +2,6 @@ package ops
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -28,7 +27,7 @@ type CleanupResult struct {
 func CleanupRepo(repoPath string, dropChanges bool, defaultBranchOverride string) CleanupResult {
 	repoName := filepath.Base(repoPath)
 
-	repo, err := gogit.PlainOpen(repoPath)
+	repo, err := plainOpen(repoPath)
 	if err != nil {
 		return CleanupResult{RepoName: repoName, Error: fmt.Sprintf("could not open repository: %s", err)}
 	}
@@ -46,14 +45,12 @@ func CleanupRepo(repoPath string, dropChanges bool, defaultBranchOverride string
 		pre, _ := git.CountChangesShell(repoPath)
 		hadChanges = pre.HasChanges()
 
-		cmd := exec.Command("git", "-C", repoPath, "checkout", ".")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			result.Error = fmt.Sprintf("git checkout . failed: %s", strings.TrimSpace(string(out)))
+		if _, err := gitRunInDir(repoPath, "-C", repoPath, "checkout", "."); err != nil {
+			result.Error = fmt.Sprintf("git checkout . failed: %s", err)
 			return result
 		}
-		cmd = exec.Command("git", "-C", repoPath, "clean", "-fd")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			result.Error = fmt.Sprintf("git clean -fd failed: %s", strings.TrimSpace(string(out)))
+		if _, err := gitRunInDir(repoPath, "-C", repoPath, "clean", "-fd"); err != nil {
+			result.Error = fmt.Sprintf("git clean -fd failed: %s", err)
 			return result
 		}
 		result.DroppedChanges = hadChanges
@@ -111,23 +108,19 @@ func updateBranches(repo *gogit.Repository, repoPath, defaultBranch string) (pru
 
 // checkoutFetchPull switches to the default branch, fetches, pulls, and prunes remote refs.
 func checkoutFetchPull(repo *gogit.Repository, repoPath, defaultBranch string) error {
-	cmd := exec.Command("git", "-C", repoPath, "checkout", defaultBranch)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to checkout %s: %s", defaultBranch, strings.TrimSpace(string(out)))
+	if _, err := gitRunInDir(repoPath, "-C", repoPath, "checkout", defaultBranch); err != nil {
+		return fmt.Errorf("failed to checkout %s: %s", defaultBranch, err)
 	}
 
-	if err := git.FetchRemote(repo); err != nil {
+	if err := fetchRemote(repo); err != nil {
 		return fmt.Errorf("failed to fetch remote: %w", err)
 	}
 
-	pullCmd := exec.Command("git", "-C", repoPath, "pull")
-	if out, err := pullCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to pull: %s", strings.TrimSpace(string(out)))
+	if _, err := gitRunInDir(repoPath, "-C", repoPath, "pull"); err != nil {
+		return fmt.Errorf("failed to pull: %s", err)
 	}
 
-	pruneCmd := exec.Command("git", "-C", repoPath, "remote", "prune", "origin")
-	_ = pruneCmd.Run()
-
+	gitRunInDir(repoPath, "-C", repoPath, "remote", "prune", "origin")
 	return nil
 }
 
@@ -142,12 +135,11 @@ func parseBranchName(raw string) string {
 
 // collectMergedBranches adds branches merged into the default branch to deleteSet.
 func collectMergedBranches(repoPath string, protected, deleteSet map[string]bool) error {
-	cmd := exec.Command("git", "-C", repoPath, "branch", "--merged")
-	output, err := cmd.Output()
+	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch", "--merged")
 	if err != nil {
 		return fmt.Errorf("failed to list merged branches: %w", err)
 	}
-	for _, raw := range strings.Split(string(output), "\n") {
+	for _, raw := range strings.Split(output, "\n") {
 		branch := parseBranchName(raw)
 		if branch != "" && !protected[branch] {
 			deleteSet[branch] = true
@@ -158,12 +150,11 @@ func collectMergedBranches(repoPath string, protected, deleteSet map[string]bool
 
 // collectGoneBranches adds branches whose remote tracking branch is gone to deleteSet.
 func collectGoneBranches(repoPath string, protected, deleteSet map[string]bool) {
-	cmd := exec.Command("git", "-C", repoPath, "branch", "-vv")
-	output, err := cmd.Output()
+	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch", "-vv")
 	if err != nil {
 		return
 	}
-	for _, raw := range strings.Split(string(output), "\n") {
+	for _, raw := range strings.Split(output, "\n") {
 		line := parseBranchName(raw)
 		if line == "" {
 			continue
@@ -180,18 +171,17 @@ func collectGoneBranches(repoPath string, protected, deleteSet map[string]bool) 
 
 // collectOrphanedBranches adds local branches whose remote counterpart no longer exists to deleteSet.
 func collectOrphanedBranches(repoPath string, protected, deleteSet map[string]bool) {
-	cmd := exec.Command("git", "-C", repoPath, "branch", "--format=%(refname:short)")
-	output, err := cmd.Output()
+	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch", "--format=%(refname:short)")
 	if err != nil {
 		return
 	}
-	for _, raw := range strings.Split(string(output), "\n") {
+	for _, raw := range strings.Split(output, "\n") {
 		branch := strings.TrimSpace(raw)
 		if branch == "" || protected[branch] || deleteSet[branch] {
 			continue
 		}
-		check := exec.Command("git", "-C", repoPath, "rev-parse", "--verify", "origin/"+branch)
-		if check.Run() != nil {
+		_, err := gitRunInDir(repoPath, "-C", repoPath, "rev-parse", "--verify", "origin/"+branch)
+		if err != nil {
 			deleteSet[branch] = true
 		}
 	}
@@ -199,13 +189,12 @@ func collectOrphanedBranches(repoPath string, protected, deleteSet map[string]bo
 
 // countLocalBranches returns the number of local branches.
 func countLocalBranches(repoPath string) int {
-	cmd := exec.Command("git", "-C", repoPath, "branch")
-	output, err := cmd.Output()
+	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch")
 	if err != nil {
 		return 0
 	}
 	count := 0
-	for _, raw := range strings.Split(string(output), "\n") {
+	for _, raw := range strings.Split(output, "\n") {
 		if strings.TrimSpace(raw) != "" {
 			count++
 		}
@@ -222,8 +211,8 @@ func deleteBranchSet(repoPath string, deleteSet map[string]bool) int {
 
 	if len(toDelete) > 0 {
 		args := append([]string{"-C", repoPath, "branch", "-D"}, toDelete...)
-		cmd := exec.Command("git", args...)
-		if _, err := cmd.CombinedOutput(); err != nil {
+		_, err := gitRunInDir(repoPath, args...)
+		if err != nil {
 			return -1
 		}
 	}

@@ -1,11 +1,8 @@
 package ops
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -35,24 +32,18 @@ type ghMyPRResult struct {
 
 // FetchMyPRs returns all open PRs authored by the currently authenticated gh user.
 func FetchMyPRs() ([]MyPR, error) {
-	cmd := exec.Command("gh", "search", "prs",
+	out, err := ghRun("search", "prs",
 		"--author=@me",
 		"--state=open",
 		"--limit=100",
 		"--json", "repository,number,title,url,state,isDraft,createdAt",
 	)
-
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-
-	if cmd.Run() != nil {
-		return nil, fmt.Errorf("gh search failed: %s", strings.TrimSpace(errBuf.String()))
+	if err != nil {
+		return nil, fmt.Errorf("gh search failed: %s", err)
 	}
 
 	var results []ghMyPRResult
-	if err := json.Unmarshal(out.Bytes(), &results); err != nil {
+	if err := json.Unmarshal([]byte(out), &results); err != nil {
 		return nil, fmt.Errorf("failed to parse gh output: %w", err)
 	}
 

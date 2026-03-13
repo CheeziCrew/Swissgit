@@ -1,20 +1,18 @@
 package ops
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
 // EnableWorkflowResult holds the outcome of checking/enabling workflows for a repo.
 type EnableWorkflowResult struct {
-	Repo            string
-	EnabledCount    int
-	RetriggeredPRs  int
-	Success         bool
-	Error           string
+	Repo           string
+	EnabledCount   int
+	RetriggeredPRs int
+	Success        bool
+	Error          string
 }
 
 const (
@@ -30,24 +28,18 @@ type ghWorkflow struct {
 
 // FetchOrgRepoNames returns all non-archived repo names for an org.
 func FetchOrgRepoNames(org string) ([]string, error) {
-	cmd := exec.Command("gh", "repo", "list", org,
+	out, err := ghRun("repo", "list", org,
 		"--limit", "500",
 		"--no-archived",
 		flagJSON, "name",
 		"-q", ".[].name",
 	)
-
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-
-	if cmd.Run() != nil {
-		return nil, fmt.Errorf("gh repo list failed: %s", strings.TrimSpace(errBuf.String()))
+	if err != nil {
+		return nil, fmt.Errorf("gh repo list failed: %s", err)
 	}
 
 	var names []string
-	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			names = append(names, line)
@@ -63,28 +55,22 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 	result := EnableWorkflowResult{Repo: repo}
 	fullRepo := fmt.Sprintf("%s/%s", org, repo)
 
-	cmd := exec.Command("gh", "workflow", "list",
+	out, err := ghRun("workflow", "list",
 		flagRepo, fullRepo,
 		"--all",
 		flagJSON, "name,id,state",
 	)
-
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-
-	if cmd.Run() != nil {
-		result.Error = fmt.Sprintf("list workflows failed: %s", strings.TrimSpace(errBuf.String()))
+	if err != nil {
+		result.Error = fmt.Sprintf("list workflows failed: %s", err)
 		return result
 	}
 
 	var workflows []ghWorkflow
-	if strings.TrimSpace(out.String()) == "" {
+	if strings.TrimSpace(out) == "" {
 		result.Success = true
 		return result
 	}
-	if err := json.Unmarshal(out.Bytes(), &workflows); err != nil {
+	if err := json.Unmarshal([]byte(out), &workflows); err != nil {
 		result.Error = fmt.Sprintf("failed to parse workflows: %s", err)
 		return result
 	}
@@ -98,11 +84,11 @@ func FindAndEnableWorkflows(org, repo, workflowName, prBranch string) EnableWork
 			continue
 		}
 
-		enableCmd := exec.Command("gh", "workflow", "enable",
+		_, err := ghRun("workflow", "enable",
 			fmt.Sprintf("%d", wf.ID),
 			flagRepo, fullRepo,
 		)
-		if err := enableCmd.Run(); err != nil {
+		if err != nil {
 			result.Error = fmt.Sprintf("failed to enable workflow %q: %s", wf.Name, err)
 			return result
 		}
@@ -129,38 +115,34 @@ type ghPR struct {
 }
 
 func retriggerPRs(fullRepo, headBranch string) (int, error) {
-	cmd := exec.Command("gh", "pr", "list",
+	out, err := ghRun("pr", "list",
 		flagRepo, fullRepo,
 		"--head", headBranch,
 		"--state", "open",
 		flagJSON, "number",
 	)
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	if err := cmd.Run(); err != nil {
+	if err != nil {
 		return 0, err
 	}
 
-	if strings.TrimSpace(out.String()) == "" {
+	if strings.TrimSpace(out) == "" {
 		return 0, nil
 	}
 
 	var prs []ghPR
-	if err := json.Unmarshal(out.Bytes(), &prs); err != nil {
+	if err := json.Unmarshal([]byte(out), &prs); err != nil {
 		return 0, err
 	}
 
 	retriggered := 0
 	for _, pr := range prs {
-		closeCmd := exec.Command("gh", "pr", "close", fmt.Sprintf("%d", pr.Number), flagRepo, fullRepo)
-		if err := closeCmd.Run(); err != nil {
+		_, err := ghRun("pr", "close", fmt.Sprintf("%d", pr.Number), flagRepo, fullRepo)
+		if err != nil {
 			return retriggered, fmt.Errorf("close PR #%d: %s", pr.Number, err)
 		}
 
-		reopenCmd := exec.Command("gh", "pr", "reopen", fmt.Sprintf("%d", pr.Number), flagRepo, fullRepo)
-		if err := reopenCmd.Run(); err != nil {
+		_, err = ghRun("pr", "reopen", fmt.Sprintf("%d", pr.Number), flagRepo, fullRepo)
+		if err != nil {
 			return retriggered, fmt.Errorf("reopen PR #%d: %s", pr.Number, err)
 		}
 

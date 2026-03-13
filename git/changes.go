@@ -1,7 +1,6 @@
 package git
 
 import (
-	"os/exec"
 	"strings"
 
 	gogit "github.com/go-git/go-git/v5"
@@ -47,11 +46,11 @@ func CountChanges(status gogit.Status) Changes {
 
 // CountChangesShell counts changes using shell git to respect .gitignore.
 func CountChangesShell(repoPath string) (Changes, error) {
-	cmd := exec.Command("git", "-C", repoPath, "status", "--porcelain")
-	output, err := cmd.Output()
+	raw, err := gitRun(repoPath, "status", "--porcelain")
 	if err != nil {
 		return Changes{}, err
 	}
+	output := []byte(raw)
 
 	var c Changes
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")

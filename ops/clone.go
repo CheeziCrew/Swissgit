@@ -88,11 +88,10 @@ func GetOrgRepositories(orgName, teamName string) ([]Repository, error) {
 	url := orgReposURL(orgName, teamName)
 
 	var allRepos []Repository
-	client := &http.Client{}
 	page := 1
 
 	for {
-		repos, hasNext, err := fetchRepoPage(client, url, page, accessToken)
+		repos, hasNext, err := fetchRepoPage(httpClient, url, page, accessToken)
 		if err != nil {
 			return nil, err
 		}

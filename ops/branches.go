@@ -31,12 +31,12 @@ type BranchesResult struct {
 func GetBranches(repoPath string) BranchesResult {
 	repoName := filepath.Base(repoPath)
 
-	repo, err := gogit.PlainOpen(repoPath)
+	repo, err := plainOpen(repoPath)
 	if err != nil {
 		return BranchesResult{RepoName: repoName, Error: fmt.Sprintf("could not open repository: %s", err)}
 	}
 
-	if err := git.FetchRemote(repo); err != nil {
+	if err := fetchRemote(repo); err != nil {
 		return BranchesResult{RepoName: repoName, Error: fmt.Sprintf("could not fetch remote: %s", err)}
 	}
 
