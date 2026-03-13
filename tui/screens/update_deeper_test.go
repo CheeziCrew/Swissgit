@@ -331,7 +331,12 @@ func TestPRModel_BreakingEsc(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(ws())
 	m.step = prStepBreaking
-	m, _ = m.Update(escMsg())
+	// ConfirmModel emits BackToMenuMsg on esc; process the cmd
+	m, cmd := m.Update(escMsg())
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if m.step != prStepChanges {
 		t.Errorf("step = %d, want prStepChanges", m.step)
 	}

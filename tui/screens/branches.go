@@ -20,6 +20,7 @@ var (
 	brLocalStyle  = lipgloss.NewStyle().Foreground(colorFg)
 	brRemoteStyle = lipgloss.NewStyle().Foreground(colorYellow)
 	brStaleStyle  = lipgloss.NewStyle().Foreground(colorRed).Strikethrough(true)
+	brMergedStyle = lipgloss.NewStyle().Foreground(colorGreen)
 	brCurrent     = lipgloss.NewStyle().Foreground(colorBlue).Bold(true)
 	brRepoName    = lipgloss.NewStyle().Bold(true).Foreground(colorFg)
 	brLabel       = lipgloss.NewStyle().Foreground(colorGray)
@@ -54,7 +55,13 @@ type branchesStep int
 const (
 	branchesStepProgress branchesStep = iota
 	branchesStepResults
+	branchesStepConfirmDelete
 )
+
+type branchesDeleteDoneMsg struct {
+	deleted int
+	err     error
+}
 
 type branchesTaskDoneMsg struct {
 	index  int
@@ -72,6 +79,7 @@ type BranchesModel struct {
 	results   []ops.BranchesResult
 	viewport  viewport.Model
 	viewReady bool
+	confirm   curd.ConfirmModel
 	width     int
 	height    int
 }
@@ -146,6 +154,8 @@ func (m BranchesModel) Update(msg tea.Msg) (BranchesModel, tea.Cmd) {
 		return m.updateProgress(msg)
 	case branchesStepResults:
 		return m.updateResults(msg)
+	case branchesStepConfirmDelete:
+		return m.updateConfirmDelete(msg)
 	}
 	return m, nil
 }
@@ -194,17 +204,96 @@ func (m BranchesModel) updateProgress(msg tea.Msg) (BranchesModel, tea.Cmd) {
 	return m, cmd
 }
 
+func (m BranchesModel) countMergedBranches() (int, int) {
+	branches, repos := 0, 0
+	for _, r := range m.results {
+		repoHasMerged := false
+		for _, b := range r.LocalBranches {
+			if b.IsMerged && b.Name != r.DefaultBranch && b.Name != r.CurrentBranch {
+				branches++
+				repoHasMerged = true
+			}
+		}
+		if repoHasMerged {
+			repos++
+		}
+	}
+	return branches, repos
+}
+
+func (m BranchesModel) deleteMergedCmd() tea.Cmd {
+	return func() tea.Msg {
+		total := 0
+		for _, r := range m.results {
+			if r.Path == "" || r.Error != "" {
+				continue
+			}
+			var toDelete []string
+			for _, b := range r.LocalBranches {
+				if b.IsMerged && b.Name != r.DefaultBranch && b.Name != r.CurrentBranch {
+					toDelete = append(toDelete, b.Name)
+				}
+			}
+			if len(toDelete) > 0 {
+				n, err := ops.DeleteMergedBranches(r.Path, toDelete)
+				total += n
+				if err != nil {
+					return branchesDeleteDoneMsg{deleted: total, err: err}
+				}
+			}
+		}
+		return branchesDeleteDoneMsg{deleted: total}
+	}
+}
+
 func (m BranchesModel) updateResults(msg tea.Msg) (BranchesModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
+		case key.Matches(msg, key.NewBinding(key.WithKeys("D"))):
+			branches, repos := m.countMergedBranches()
+			if branches == 0 {
+				return m, nil
+			}
+			m.confirm = curd.NewConfirmModel(curd.ConfirmConfig{
+				Question: fmt.Sprintf("Delete %d merged branch(es) across %d repo(s)?", branches, repos),
+				Caller:   "branches-delete",
+				Palette:  palette,
+			})
+			m.step = branchesStepConfirmDelete
+			return m, nil
 		}
 	}
 
 	var cmd tea.Cmd
 	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+func (m BranchesModel) updateConfirmDelete(msg tea.Msg) (BranchesModel, tea.Cmd) {
+	switch msg := msg.(type) {
+	case curd.ConfirmMsg:
+		if msg.Confirmed {
+			m.step = branchesStepProgress
+			return m, m.deleteMergedCmd()
+		}
+		m.step = branchesStepResults
+		return m, nil
+
+	case curd.BackToMenuMsg:
+		m.step = branchesStepResults
+		return m, nil
+
+	case branchesDeleteDoneMsg:
+		// Re-scan after delete
+		m.step = branchesStepProgress
+		return m, discoverForBranches()
+	}
+
+	var cmd tea.Cmd
+	m.confirm, cmd = m.confirm.Update(msg)
 	return m, cmd
 }
 
@@ -243,10 +332,15 @@ func renderBranchList(branches []ops.BranchInfo, label string, defaultStyle lipg
 	}
 	for _, b := range shown {
 		style := defaultStyle
-		if b.IsStale {
+		suffix := ""
+		switch {
+		case b.IsMerged:
+			style = brMergedStyle
+			suffix = " ✓merged"
+		case b.IsStale:
 			style = brStaleStyle
 		}
-		s += fmt.Sprintf("    %s %s\n", brLabel.Render(label), style.Render(truncateBranchName(b.Name)))
+		s += fmt.Sprintf("    %s %s%s\n", brLabel.Render(label), style.Render(truncateBranchName(b.Name)), brDim.Render(suffix))
 	}
 	if len(branches) > maxBranchesShown {
 		s += fmt.Sprintf(fmtIndentStr, brDim.Render(fmt.Sprintf("  +%d more %s", len(branches)-maxBranchesShown, category)))
@@ -275,12 +369,15 @@ func formatBranchEntry(r ops.BranchesResult) string {
 	return s
 }
 
-func branchesBanner(total, interesting, errored, clean int) string {
+func branchesBanner(total, interesting, errored, clean, merged int) string {
 	banner := brAccent.Render("Branches")
 	banner += brDim.Render("  ")
 	banner += fmt.Sprintf("%d repos", total)
 	if interesting > 0 {
 		banner += brDim.Render("  ") + brRemoteStyle.Render(fmt.Sprintf("⚡ %d with branches", interesting))
+	}
+	if merged > 0 {
+		banner += brDim.Render("  ") + brMergedStyle.Render(fmt.Sprintf("✓ %d merged", merged))
 	}
 	if errored > 0 {
 		banner += brDim.Render("  ") + stErr.Render(fmt.Sprintf("✗ %d errors", errored))
@@ -316,6 +413,7 @@ func (m BranchesModel) renderResults() string {
 	}
 
 	var interesting, clean, errored []ops.BranchesResult
+	mergedCount := 0
 	for _, r := range sorted {
 		switch {
 		case r.Error != "":
@@ -325,6 +423,11 @@ func (m BranchesModel) renderResults() string {
 		default:
 			clean = append(clean, r)
 		}
+		for _, b := range r.LocalBranches {
+			if b.IsMerged && b.Name != r.DefaultBranch {
+				mergedCount++
+			}
+		}
 	}
 
 	boxW := m.width - 6
@@ -333,7 +436,7 @@ func (m BranchesModel) renderResults() string {
 	}
 
 	var s string
-	s += brSummaryBox.Render(branchesBanner(len(sorted), len(interesting), len(errored), len(clean))) + "\n\n"
+	s += brSummaryBox.Render(branchesBanner(len(sorted), len(interesting), len(errored), len(clean), mergedCount)) + "\n\n"
 	s += renderBranchErrors(errored, boxW)
 
 	if len(interesting) > 0 {
@@ -369,9 +472,15 @@ func (m BranchesModel) View() string {
 		} else {
 			s += m.renderResults() + "\n"
 		}
-		s += curd.RenderHintBar(st, []curd.Hint{
-			{Key: "esc/q", Desc: "menu"},
-		})
+		hints := []curd.Hint{{Key: "esc/q", Desc: "menu"}}
+		if branches, _ := m.countMergedBranches(); branches > 0 {
+			hints = append([]curd.Hint{{Key: "D", Desc: "delete merged"}}, hints...)
+		}
+		s += curd.RenderHintBar(st, hints)
+		return s
+
+	case branchesStepConfirmDelete:
+		s += m.confirm.View()
 		return s
 	}
 

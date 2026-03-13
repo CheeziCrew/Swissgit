@@ -3,6 +3,7 @@ package ops
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/CheeziCrew/swissgit/git"
@@ -15,11 +16,13 @@ type BranchInfo struct {
 	Name     string
 	IsStale  bool // >120 days since last commit
 	IsRemote bool
+	IsMerged bool // merged into default branch
 }
 
 // BranchesResult holds the outcome of listing branches for a repo.
 type BranchesResult struct {
 	RepoName       string
+	Path           string
 	CurrentBranch  string
 	DefaultBranch  string
 	LocalBranches  []BranchInfo
@@ -57,13 +60,56 @@ func GetBranches(repoPath string) BranchesResult {
 		return BranchesResult{RepoName: repoName, Error: fmt.Sprintf("could not list remote branches: %s", err)}
 	}
 
+	merged := getMergedBranches(repoPath, defaultBranch)
+	markMerged(local, merged)
+	markMerged(remote, merged)
+
 	return BranchesResult{
 		RepoName:       repoName,
+		Path:           repoPath,
 		CurrentBranch:  branch,
 		DefaultBranch:  defaultBranch,
 		LocalBranches:  local,
 		RemoteBranches: remote,
 	}
+}
+
+// getMergedBranches returns a set of branch names merged into the target branch.
+func getMergedBranches(repoPath, target string) map[string]bool {
+	merged := make(map[string]bool)
+	out, err := gitRunInDir(repoPath, "branch", "--merged", target)
+	if err != nil {
+		return merged
+	}
+	for _, line := range strings.Split(out, "\n") {
+		name := strings.TrimSpace(strings.TrimPrefix(line, "*"))
+		name = strings.TrimSpace(name)
+		if name != "" && name != target {
+			merged[name] = true
+		}
+	}
+	return merged
+}
+
+func markMerged(branches []BranchInfo, merged map[string]bool) {
+	for i := range branches {
+		if merged[branches[i].Name] {
+			branches[i].IsMerged = true
+		}
+	}
+}
+
+// DeleteMergedBranches deletes the given local branches. Returns count deleted.
+func DeleteMergedBranches(repoPath string, branches []string) (int, error) {
+	deleted := 0
+	for _, b := range branches {
+		_, err := gitRunInDir(repoPath, "branch", "-d", b)
+		if err != nil {
+			return deleted, fmt.Errorf("failed to delete %s: %w", b, err)
+		}
+		deleted++
+	}
+	return deleted, nil
 }
 
 func listBranches(repo *gogit.Repository, isRemote bool) ([]BranchInfo, error) {

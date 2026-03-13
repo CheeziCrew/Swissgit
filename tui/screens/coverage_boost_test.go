@@ -402,7 +402,7 @@ func TestCleanupModel_ViewDrop_SelectionHighlight(t *testing.T) {
 	m := NewCleanupModel()
 	m.viewReady = true
 	m.step = cleanupStepDrop
-	m.dropCursor = 1 // Yes selected
+	// ConfirmModel handles cursor internally; just verify view renders
 	v := m.View()
 	if v == "" {
 		t.Error("View() empty at drop step with yes selected")
@@ -665,8 +665,12 @@ func TestPRModel_BreakingNavigation(t *testing.T) {
 	m, _ = m.Update(upMsg())
 	m, _ = m.Update(downMsg())
 
-	// Enter to select
-	m, _ = m.Update(enterMsg())
+	// Use 'y' quick-key to confirm, then process the ConfirmMsg
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'y'})
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if m.step != prStepRepoSelect {
 		t.Errorf("step = %d, want prStepRepoSelect", m.step)
 	}
@@ -676,10 +680,14 @@ func TestPRModel_BreakingSelectYes(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(wsMsg())
 	m.step = prStepBreaking
-	m.breakingCursor = 1
-	m, _ = m.Update(enterMsg())
+	// Send 'y' quick-key via ConfirmModel
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'y'})
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if !m.breaking {
-		t.Error("expected breaking = true when cursor = 1")
+		t.Error("expected breaking = true")
 	}
 }
 

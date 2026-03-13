@@ -94,6 +94,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case screens.SaveHistoryMsg:
 		m.history.Add(msg.Category, msg.Value)
 		return m, nil
+
+	case screens.StatusActionMsg:
+		return m, m.handleStatusAction(msg)
 	}
 
 	var cmd tea.Cmd
@@ -225,3 +228,20 @@ func (m *Model) handleMenuSelection(msg screens.MenuSelectionMsg) tea.Cmd {
 	return tea.Batch(initCmd, sizeCmd)
 }
 
+func (m *Model) handleStatusAction(msg screens.StatusActionMsg) tea.Cmd {
+	sizeCmd := func() tea.Msg {
+		return tea.WindowSizeMsg{Width: m.width, Height: m.height}
+	}
+
+	switch msg.Action {
+	case "commit":
+		m.current = ScreenCommit
+		m.commit = screens.NewCommitModel(m.history.Get("commit_message")).WithRepo(msg.Path)
+		return tea.Batch(m.commit.Init(), sizeCmd)
+	case "pullrequest":
+		m.current = ScreenPullRequest
+		m.pr = screens.NewPullRequestModel(m.history.Get("pr_message")).WithRepo(msg.Path)
+		return tea.Batch(m.pr.Init(), sizeCmd)
+	}
+	return nil
+}

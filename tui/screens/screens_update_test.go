@@ -150,14 +150,12 @@ func TestCleanupModel_UpdateWindowSize(t *testing.T) {
 func TestCleanupModel_DropStep_Navigation(t *testing.T) {
 	m := NewCleanupModel()
 	m, _ = m.Update(wsMsg())
-	// Navigate down/up in drop selection
+	// Navigate toggles in confirm model (just verify no crash)
 	m, _ = m.Update(downMsg())
-	if m.dropCursor != 1 {
-		t.Errorf("dropCursor = %d, want 1", m.dropCursor)
-	}
 	m, _ = m.Update(upMsg())
-	if m.dropCursor != 0 {
-		t.Errorf("dropCursor = %d, want 0", m.dropCursor)
+	// Confirm model handles cursor internally; verify we're still on drop step
+	if m.step != cleanupStepDrop {
+		t.Errorf("step = %d, want cleanupStepDrop", m.step)
 	}
 }
 

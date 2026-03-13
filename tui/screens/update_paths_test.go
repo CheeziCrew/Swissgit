@@ -119,8 +119,13 @@ func TestBranchesModel_UpdateResults_Esc(t *testing.T) {
 func TestCleanupModel_DropStep_EnterNo(t *testing.T) {
 	m := NewCleanupModel()
 	m, _ = m.Update(ws())
-	m.dropCursor = 0 // "No"
-	m, _ = m.Update(enterMsg())
+	// ConfirmModel defaults cursor to No; send 'n' quick-key
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'n'})
+	// Simulate the ConfirmMsg that the cmd would produce
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if m.step != cleanupStepRepoSelect {
 		t.Errorf("step = %d, want %d", m.step, cleanupStepRepoSelect)
 	}
@@ -132,8 +137,13 @@ func TestCleanupModel_DropStep_EnterNo(t *testing.T) {
 func TestCleanupModel_DropStep_EnterYes(t *testing.T) {
 	m := NewCleanupModel()
 	m, _ = m.Update(ws())
-	m.dropCursor = 1 // "Yes"
-	m, _ = m.Update(enterMsg())
+	// Send 'y' quick-key for yes
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'y'})
+	// Simulate the ConfirmMsg that the cmd would produce
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if m.step != cleanupStepRepoSelect {
 		t.Errorf("step = %d, want %d", m.step, cleanupStepRepoSelect)
 	}

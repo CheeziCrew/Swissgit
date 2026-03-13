@@ -3,14 +3,15 @@ package ops
 import (
 	_ "embed" // embed is used for go:embed directives
 	"fmt"
+	"os"
 	"strings"
 )
 
 //go:embed PULL_REQUEST_TEMPLATE.md
 var pullRequestTemplate string
 
-// ChangeTypes are the available change categories for a PR.
-var ChangeTypes = []string{
+// defaultChangeTypes are the built-in change categories for a PR.
+var defaultChangeTypes = []string{
 	"Bug fix",
 	"New feature",
 	"Removed feature",
@@ -20,9 +21,19 @@ var ChangeTypes = []string{
 	"Documentation content changes",
 }
 
+// ChangeTypes are the available change categories for a PR.
+// Deprecated: Use LoadConfig().ChangeTypes instead for configurable types.
+var ChangeTypes = defaultChangeTypes
+
 // BuildPullRequestBody fills in the PR template with the selected changes.
 func BuildPullRequestBody(changes []string, breakingChange bool) (string, error) {
+	cfg := LoadConfig()
 	content := pullRequestTemplate
+	if cfg.TemplatePath != "" {
+		if data, err := os.ReadFile(cfg.TemplatePath); err == nil {
+			content = string(data)
+		}
+	}
 
 	changeSet := make(map[string]bool, len(changes))
 	for _, c := range changes {

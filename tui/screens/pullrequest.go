@@ -46,7 +46,7 @@ type PullRequestModel struct {
 	changeSelected map[int]bool
 
 	breaking       bool
-	breakingCursor int // 0=no, 1=yes
+	breakingConfirm curd.ConfirmModel
 
 	history HistoryBrowser
 
@@ -56,12 +56,20 @@ type PullRequestModel struct {
 	viewport   viewport.Model
 	viewReady  bool
 
-	message string
-	branch  string
-	target  string
-	changes []string
-	repos   []string
-	height  int
+	message         string
+	branch          string
+	target          string
+	changes         []string
+	repos           []string
+	preselectedRepo string
+	height          int
+}
+
+// WithRepo returns a PullRequestModel pre-configured with a single repo path,
+// skipping the repo selection step.
+func (m PullRequestModel) WithRepo(path string) PullRequestModel {
+	m.preselectedRepo = path
+	return m
 }
 
 func NewPullRequestModel(recentMessages []string) PullRequestModel {
@@ -72,14 +80,21 @@ func NewPullRequestModel(recentMessages []string) PullRequestModel {
 	bi := newStyledInput("feature branch name (e.g. UF-123)")
 	bi.CharLimit = 100
 
+	cfg := ops.LoadConfig()
+
 	return PullRequestModel{
 		step:           prStepMessage,
 		messageInput:   mi,
 		branchInput:    bi,
-		target:         "main",
-		changeTypes:    ops.ChangeTypes,
+		target:         cfg.TargetBranch,
+		changeTypes:    cfg.ChangeTypes,
 		changeSelected: make(map[int]bool),
 		history:        NewHistoryBrowser(recentMessages),
+		breakingConfirm: curd.NewConfirmModel(curd.ConfirmConfig{
+			Question: "Breaking change?",
+			Caller:   "breaking",
+			Palette:  palette,
+		}),
 	}
 }
 
@@ -221,23 +236,26 @@ func (m PullRequestModel) updateChanges(msg tea.Msg) (PullRequestModel, tea.Cmd)
 
 func (m PullRequestModel) updateBreaking(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k", "down", "j"))):
-			m.breakingCursor = 1 - m.breakingCursor
-		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
-			m.breaking = m.breakingCursor == 1
-			m.step = prStepRepoSelect
-			// Measure actual parent chrome instead of hardcoding
-			preview := titleStyle.Render("🚀 Pull Request") + "\n\n" + m.showSummary()
-			m.repoSelect = NewRepoSelectModel("pullrequest", ".", lipgloss.Height(preview), m.height)
-			return m, m.repoSelect.Init()
-		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
-			m.step = prStepChanges
-			return m, nil
+	case curd.ConfirmMsg:
+		m.breaking = msg.Confirmed
+		if m.preselectedRepo != "" {
+			m.repos = []string{m.preselectedRepo}
+			return m, m.startPRTasks()
 		}
+		m.step = prStepRepoSelect
+		preview := titleStyle.Render("🚀 Pull Request") + "\n\n" + m.showSummary()
+		m.repoSelect = NewRepoSelectModel("pullrequest", ".", lipgloss.Height(preview), m.height)
+		return m, m.repoSelect.Init()
+	case curd.BackToMenuMsg:
+		m.step = prStepChanges
+		return m, nil
+	default:
+		_ = msg
 	}
-	return m, nil
+
+	var cmd tea.Cmd
+	m.breakingConfirm, cmd = m.breakingConfirm.Update(msg)
+	return m, cmd
 }
 
 func (m PullRequestModel) updateRepoSelect(msg tea.Msg) (PullRequestModel, tea.Cmd) {
@@ -362,31 +380,8 @@ func (m PullRequestModel) viewChanges() string {
 }
 
 func (m PullRequestModel) viewBreaking() string {
-	type breakOption struct {
-		label string
-		desc  string
-	}
-	options := []breakOption{
-		{label: "No", desc: "safe (default)"},
-		{label: "Yes", desc: "breaking change"},
-	}
-
 	s := m.showSummary()
-	s += prLabelStyle.Render("Breaking change?") + "\n\n"
-	for i, opt := range options {
-		line := fmt.Sprintf(fmtTwoCol, menuActiveName.Render(opt.label), menuActiveDesc.Render(opt.desc))
-		if i == m.breakingCursor {
-			s += menuActiveItem.Render(line) + "\n"
-		} else {
-			inactiveLine := fmt.Sprintf(fmtTwoCol, menuInactiveName.Render(opt.label), menuInactiveDesc.Render(opt.desc))
-			s += menuInactiveItem.Render(inactiveLine) + "\n"
-		}
-	}
-	s += curd.RenderHintBar(st, []curd.Hint{
-		{Key: "j/k", Desc: "move"},
-		{Key: "enter", Desc: "select"},
-		{Key: "esc", Desc: "back"},
-	})
+	s += m.breakingConfirm.View()
 	return s
 }
 

@@ -46,7 +46,7 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 	result.Branch = branchName
 
 	// shell git to respect .gitignore
-	if _, err := gitRunInDir(repoPath, "-C", repoPath, "add", "."); err != nil {
+	if _, err := gitRunInDir(repoPath, "add", "."); err != nil {
 		result.Error = fmt.Sprintf("failed to add files: %s", err)
 		return result
 	}
@@ -64,7 +64,7 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 	}
 
 	fullMessage := fmt.Sprintf("%s: %s", branchName, commitMessage)
-	if _, err := gitRunInDir(repoPath, "-C", repoPath, "commit", "-m", fullMessage); err != nil {
+	if _, err := gitRunInDir(repoPath, "commit", "-m", fullMessage); err != nil {
 		result.Error = fmt.Sprintf("failed to commit changes: %s", err)
 		return result
 	}

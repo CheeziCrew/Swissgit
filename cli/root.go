@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var jsonOutput bool
+
 const (
 	descGitHubOrg    = "GitHub org"
 	fmtStatusLine    = " %s %s %s\n"
@@ -34,6 +36,8 @@ func BuildCLI() *cobra.Command {
 		SilenceUsage:  true,
 	}
 
+	root.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output JSON instead of styled text")
+
 	root.AddCommand(prCmd())
 	root.AddCommand(commitCLICmd())
 	root.AddCommand(cleanupCLICmd())
@@ -51,15 +55,22 @@ func BuildCLI() *cobra.Command {
 func prCmd() *cobra.Command {
 	var message, branch, target string
 	var allFlag bool
+	cfg := ops.LoadConfig()
 
 	cmd := &cobra.Command{
 		Use:   "pr",
 		Short: "Commit, push & create pull request",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			paths := resolvePaths(".", allFlag)
+			var results []ops.PRResult
 			for _, p := range paths {
-				result := ops.CommitAndCreatePR(p, branch, message, target, nil, false)
-				printResult(result.RepoName, result.Success, result.PRURL, result.Error)
+				results = append(results, ops.CommitAndCreatePR(p, branch, message, target, nil, false))
+			}
+			if jsonOutput {
+				return printJSON(results)
+			}
+			for _, r := range results {
+				printResult(r.RepoName, r.Success, r.PRURL, r.Error)
 			}
 			return nil
 		},
@@ -67,7 +78,7 @@ func prCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&message, "message", "m", "", "PR title / commit message")
 	cmd.Flags().StringVarP(&branch, "branch", "b", "", "Feature branch name")
-	cmd.Flags().StringVarP(&target, "target", "t", "main", "Target branch")
+	cmd.Flags().StringVarP(&target, "target", "t", cfg.TargetBranch, "Target branch")
 	cmd.Flags().BoolVarP(&allFlag, "all", "a", false, "Process all repos in subdirectories")
 	cmd.MarkFlagRequired("message")
 	cmd.MarkFlagRequired("branch")
@@ -84,9 +95,15 @@ func commitCLICmd() *cobra.Command {
 		Short: "Stage, commit & push changes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			paths := resolvePaths(".", allFlag)
+			var results []ops.CommitResult
 			for _, p := range paths {
-				result := ops.CommitAndPush(p, branch, message)
-				printResult(result.RepoName, result.Success, result.Branch, result.Error)
+				results = append(results, ops.CommitAndPush(p, branch, message))
+			}
+			if jsonOutput {
+				return printJSON(results)
+			}
+			for _, r := range results {
+				printResult(r.RepoName, r.Success, r.Branch, r.Error)
 			}
 			return nil
 		},
@@ -125,6 +142,9 @@ func cleanupCLICmd() *cobra.Command {
 			}
 			wg.Wait()
 
+			if jsonOutput {
+				return printJSON(results)
+			}
 			for _, r := range results {
 				info := ""
 				if r.PrunedBranches > 0 {
@@ -187,6 +207,9 @@ func statusCLICmd() *cobra.Command {
 			}
 			wg.Wait()
 
+			if jsonOutput {
+				return printJSON(results)
+			}
 			for _, r := range results {
 				if !verbose && r.Clean && r.Branch == r.DefaultBranch {
 					continue
@@ -215,8 +238,14 @@ func branchesCLICmd() *cobra.Command {
 		Short: "List branches",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			paths := resolvePaths(".", allFlag)
+			var results []ops.BranchesResult
 			for _, p := range paths {
-				r := ops.GetBranches(p)
+				results = append(results, ops.GetBranches(p))
+			}
+			if jsonOutput {
+				return printJSON(results)
+			}
+			for _, r := range results {
 				if r.Error != "" {
 					fmt.Printf(fmtStatusLine, fail, r.RepoName, r.Error)
 					continue
@@ -253,15 +282,24 @@ func cloneCLICmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				var results []ops.CloneResult
 				for _, r := range repos {
 					dest := filepath.Join(destPath, r.Name)
-					result := ops.CloneRepository(r, dest)
-					printResult(result.RepoName, result.Success, "", result.Error)
+					results = append(results, ops.CloneRepository(r, dest))
+				}
+				if jsonOutput {
+					return printJSON(results)
+				}
+				for _, r := range results {
+					printResult(r.RepoName, r.Success, "", r.Error)
 				}
 				return nil
 			}
 			if repoURL != "" {
 				result := ops.CloneFromURL(repoURL, destPath)
+				if jsonOutput {
+					return printJSON(result)
+				}
 				printResult(result.RepoName, result.Success, "", result.Error)
 				return nil
 			}
@@ -286,13 +324,19 @@ func automergeCLICmd() *cobra.Command {
 		Short: "Enable auto-merge on PRs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			paths := resolvePaths(".", allFlag)
+			var results []ops.AutomergeResult
 			for _, p := range paths {
-				result := ops.EnableAutomerge(target, p)
+				results = append(results, ops.EnableAutomerge(target, p))
+			}
+			if jsonOutput {
+				return printJSON(results)
+			}
+			for _, r := range results {
 				info := ""
-				if result.PRNumber != "" {
-					info = "PR #" + result.PRNumber
+				if r.PRNumber != "" {
+					info = "PR #" + r.PRNumber
 				}
-				printResult(result.RepoName, result.Success, info, result.Error)
+				printResult(r.RepoName, r.Success, info, r.Error)
 			}
 			return nil
 		},
@@ -310,11 +354,19 @@ type mergeConfig struct {
 	dryRun    bool
 	batchSize int
 	waitMin   int
+	json      bool
+}
+
+type mergeSummary struct {
+	Merged int          `json:"merged"`
+	Failed int          `json:"failed"`
+	PRs    []ops.PRInfo `json:"prs"`
 }
 
 func runMergePRs(cfg mergeConfig) error {
 	merged, failed := 0, 0
 	batch := 0
+	var allPRs []ops.PRInfo
 
 	for {
 		prs, err := ops.FetchApprovedPRs(cfg.org)
@@ -322,14 +374,19 @@ func runMergePRs(cfg mergeConfig) error {
 			return err
 		}
 		if len(prs) == 0 {
-			printNoPRsMessage(batch)
+			if !cfg.json {
+				printNoPRsMessage(batch)
+			}
 			break
 		}
 
 		end := min(cfg.batchSize, len(prs))
 		batch++
-		fmt.Printf("\nBatch %d — %d approved PR(s), merging %d\n", batch, len(prs), end)
+		if !cfg.json {
+			fmt.Printf("\nBatch %d — %d approved PR(s), merging %d\n", batch, len(prs), end)
+		}
 
+		allPRs = append(allPRs, prs[:end]...)
 		m, f := processMergeBatch(cfg, prs[:end])
 		merged += m
 		failed += f
@@ -338,10 +395,15 @@ func runMergePRs(cfg mergeConfig) error {
 			break
 		}
 
-		fmt.Printf("\nWaiting %d minutes before next batch…\n", cfg.waitMin)
+		if !cfg.json {
+			fmt.Printf("\nWaiting %d minutes before next batch…\n", cfg.waitMin)
+		}
 		time.Sleep(time.Duration(cfg.waitMin) * time.Minute)
 	}
 
+	if cfg.json {
+		return printJSON(mergeSummary{Merged: merged, Failed: failed, PRs: allPRs})
+	}
 	if !cfg.dryRun && batch > 0 {
 		fmt.Printf("\n=== Summary ===\nMerged: %d\nFailed: %d\n", merged, failed)
 	}
@@ -388,6 +450,7 @@ func mergePRsCLICmd() *cobra.Command {
 				dryRun:    dryRun,
 				batchSize: batchSize,
 				waitMin:   waitMin,
+				json:      jsonOutput,
 			})
 		},
 	}
@@ -411,9 +474,18 @@ func enableWorkflowsCLICmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Checking %d repos in %s\n", len(repos), orgName)
+
+			var results []ops.EnableWorkflowResult
 			for _, repo := range repos {
-				result := ops.FindAndEnableWorkflows(orgName, repo, workflowName, prBranch)
+				results = append(results, ops.FindAndEnableWorkflows(orgName, repo, workflowName, prBranch))
+			}
+
+			if jsonOutput {
+				return printJSON(results)
+			}
+
+			fmt.Printf("Checking %d repos in %s\n", len(repos), orgName)
+			for i, result := range results {
 				var parts []string
 				if result.EnabledCount > 0 {
 					parts = append(parts, fmt.Sprintf("enabled %d", result.EnabledCount))
@@ -421,7 +493,7 @@ func enableWorkflowsCLICmd() *cobra.Command {
 				if result.RetriggeredPRs > 0 {
 					parts = append(parts, fmt.Sprintf("retriggered %d PR(s)", result.RetriggeredPRs))
 				}
-				printResult(repo, result.Success, strings.Join(parts, ", "), result.Error)
+				printResult(repos[i], result.Success, strings.Join(parts, ", "), result.Error)
 			}
 			return nil
 		},
@@ -446,13 +518,17 @@ func teamPRsCLICmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Found %d repos for %s/%s\n", len(repos), orgName, teamName)
 
 			prs, err := ops.FetchTeamPRs(orgName, repos)
 			if err != nil {
 				return err
 			}
 
+			if jsonOutput {
+				return printJSON(prs)
+			}
+
+			fmt.Printf("Found %d repos for %s/%s\n", len(repos), orgName, teamName)
 			if len(prs) == 0 {
 				fmt.Println("No open PRs.")
 				return nil

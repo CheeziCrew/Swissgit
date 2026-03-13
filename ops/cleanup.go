@@ -45,11 +45,11 @@ func CleanupRepo(repoPath string, dropChanges bool, defaultBranchOverride string
 		pre, _ := git.CountChangesShell(repoPath)
 		hadChanges = pre.HasChanges()
 
-		if _, err := gitRunInDir(repoPath, "-C", repoPath, "checkout", "."); err != nil {
+		if _, err := gitRunInDir(repoPath,"checkout", "."); err != nil {
 			result.Error = fmt.Sprintf("git checkout . failed: %s", err)
 			return result
 		}
-		if _, err := gitRunInDir(repoPath, "-C", repoPath, "clean", "-fd"); err != nil {
+		if _, err := gitRunInDir(repoPath,"clean", "-fd"); err != nil {
 			result.Error = fmt.Sprintf("git clean -fd failed: %s", err)
 			return result
 		}
@@ -108,7 +108,7 @@ func updateBranches(repo *gogit.Repository, repoPath, defaultBranch string) (pru
 
 // checkoutFetchPull switches to the default branch, fetches, pulls, and prunes remote refs.
 func checkoutFetchPull(repo *gogit.Repository, repoPath, defaultBranch string) error {
-	if _, err := gitRunInDir(repoPath, "-C", repoPath, "checkout", defaultBranch); err != nil {
+	if _, err := gitRunInDir(repoPath,"checkout", defaultBranch); err != nil {
 		return fmt.Errorf("failed to checkout %s: %s", defaultBranch, err)
 	}
 
@@ -116,11 +116,11 @@ func checkoutFetchPull(repo *gogit.Repository, repoPath, defaultBranch string) e
 		return fmt.Errorf("failed to fetch remote: %w", err)
 	}
 
-	if _, err := gitRunInDir(repoPath, "-C", repoPath, "pull"); err != nil {
+	if _, err := gitRunInDir(repoPath,"pull"); err != nil {
 		return fmt.Errorf("failed to pull: %s", err)
 	}
 
-	gitRunInDir(repoPath, "-C", repoPath, "remote", "prune", "origin")
+	gitRunInDir(repoPath,"remote", "prune", "origin")
 	return nil
 }
 
@@ -135,7 +135,7 @@ func parseBranchName(raw string) string {
 
 // collectMergedBranches adds branches merged into the default branch to deleteSet.
 func collectMergedBranches(repoPath string, protected, deleteSet map[string]bool) error {
-	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch", "--merged")
+	output, err := gitRunInDir(repoPath,"branch", "--merged")
 	if err != nil {
 		return fmt.Errorf("failed to list merged branches: %w", err)
 	}
@@ -150,7 +150,7 @@ func collectMergedBranches(repoPath string, protected, deleteSet map[string]bool
 
 // collectGoneBranches adds branches whose remote tracking branch is gone to deleteSet.
 func collectGoneBranches(repoPath string, protected, deleteSet map[string]bool) {
-	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch", "-vv")
+	output, err := gitRunInDir(repoPath,"branch", "-vv")
 	if err != nil {
 		return
 	}
@@ -171,7 +171,7 @@ func collectGoneBranches(repoPath string, protected, deleteSet map[string]bool) 
 
 // collectOrphanedBranches adds local branches whose remote counterpart no longer exists to deleteSet.
 func collectOrphanedBranches(repoPath string, protected, deleteSet map[string]bool) {
-	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch", "--format=%(refname:short)")
+	output, err := gitRunInDir(repoPath,"branch", "--format=%(refname:short)")
 	if err != nil {
 		return
 	}
@@ -180,7 +180,7 @@ func collectOrphanedBranches(repoPath string, protected, deleteSet map[string]bo
 		if branch == "" || protected[branch] || deleteSet[branch] {
 			continue
 		}
-		_, err := gitRunInDir(repoPath, "-C", repoPath, "rev-parse", "--verify", "origin/"+branch)
+		_, err := gitRunInDir(repoPath,"rev-parse", "--verify", "origin/"+branch)
 		if err != nil {
 			deleteSet[branch] = true
 		}
@@ -189,7 +189,7 @@ func collectOrphanedBranches(repoPath string, protected, deleteSet map[string]bo
 
 // countLocalBranches returns the number of local branches.
 func countLocalBranches(repoPath string) int {
-	output, err := gitRunInDir(repoPath, "-C", repoPath, "branch")
+	output, err := gitRunInDir(repoPath,"branch")
 	if err != nil {
 		return 0
 	}
@@ -210,7 +210,7 @@ func deleteBranchSet(repoPath string, deleteSet map[string]bool) int {
 	}
 
 	if len(toDelete) > 0 {
-		args := append([]string{"-C", repoPath, "branch", "-D"}, toDelete...)
+		args := append([]string{"branch", "-D"}, toDelete...)
 		_, err := gitRunInDir(repoPath, args...)
 		if err != nil {
 			return -1

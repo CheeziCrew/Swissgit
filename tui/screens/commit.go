@@ -37,8 +37,9 @@ type CommitModel struct {
 	messageInput textinput.Model
 	branchInput  textinput.Model
 
-	message string
-	branch  string
+	message        string
+	branch         string
+	preselectedRepo string
 
 	history HistoryBrowser
 
@@ -49,6 +50,13 @@ type CommitModel struct {
 	viewport   viewport.Model
 	viewReady  bool
 	height     int
+}
+
+// WithRepo returns a CommitModel pre-configured with a single repo path,
+// skipping the repo selection step.
+func (m CommitModel) WithRepo(path string) CommitModel {
+	m.preselectedRepo = path
+	return m
 }
 
 func NewCommitModel(recentMessages []string) CommitModel {
@@ -145,6 +153,10 @@ func (m CommitModel) updateBranch(msg tea.Msg) (CommitModel, tea.Cmd) {
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
 			m.branch = m.branchInput.Value()
+			if m.preselectedRepo != "" {
+				m.repos = []string{m.preselectedRepo}
+				return m, m.startCommitTasks()
+			}
 			m.step = commitStepRepoSelect
 			parts := []string{summaryLine("message", m.message)}
 			if m.branch != "" {

@@ -2,17 +2,10 @@ package screens
 
 import (
 	"charm.land/bubbles/v2/textinput"
-	"charm.land/lipgloss/v2"
+	"github.com/CheeziCrew/curd"
 )
 
-// newStyledInput creates a textinput with our standard theme applied.
+// newStyledInput creates a textinput with the swissgit palette applied.
 func newStyledInput(placeholder string) textinput.Model {
-	ti := textinput.New()
-	ti.Placeholder = placeholder
-	ti.SetWidth(60)
-	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(colorBrMag)
-	s.Focused.Text = lipgloss.NewStyle().Foreground(colorFg)
-	ti.SetStyles(s)
-	return ti
+	return curd.NewStyledInput(placeholder, palette)
 }

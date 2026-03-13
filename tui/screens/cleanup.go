@@ -33,7 +33,7 @@ type CleanupModel struct {
 	step cleanupStep
 
 	dropChanges bool
-	dropCursor  int // 0=no, 1=yes
+	confirm     curd.ConfirmModel
 
 	repoSelect RepoSelectModel
 	progress   components.ProgressModel
@@ -46,8 +46,12 @@ type CleanupModel struct {
 
 func NewCleanupModel() CleanupModel {
 	return CleanupModel{
-		step:       cleanupStepDrop,
-		dropCursor: 0, // default to "no"
+		step: cleanupStepDrop,
+		confirm: curd.NewConfirmModel(curd.ConfirmConfig{
+			Question: "Drop uncommitted changes?",
+			Caller:   "cleanup",
+			Palette:  palette,
+		}),
 	}
 }
 
@@ -85,27 +89,23 @@ func (m CleanupModel) Update(msg tea.Msg) (CleanupModel, tea.Cmd) {
 
 func (m CleanupModel) updateDrop(msg tea.Msg) (CleanupModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, key.NewBinding(key.WithKeys("up", "k"))):
-			m.dropCursor = 1 - m.dropCursor
-		case key.Matches(msg, key.NewBinding(key.WithKeys("down", "j"))):
-			m.dropCursor = 1 - m.dropCursor
-		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
-			m.dropChanges = m.dropCursor == 1
-			m.step = cleanupStepRepoSelect
-			dropLabel := "no"
-			if m.dropChanges {
-				dropLabel = "yes"
-			}
-			preview := titleStyle.Render("🧹 Cleanup") + "\n\n" + summaryBlock(summaryLine("drop changes", dropLabel))
-			m.repoSelect = NewRepoSelectModel("cleanup", ".", lipgloss.Height(preview), m.height)
-			return m, m.repoSelect.Init()
-		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
-			return m, func() tea.Msg { return BackToMenuMsg{} }
+	case curd.ConfirmMsg:
+		m.dropChanges = msg.Confirmed
+		m.step = cleanupStepRepoSelect
+		dropLabel := "no"
+		if m.dropChanges {
+			dropLabel = "yes"
 		}
+		preview := titleStyle.Render("🧹 Cleanup") + "\n\n" + summaryBlock(summaryLine("drop changes", dropLabel))
+		m.repoSelect = NewRepoSelectModel("cleanup", ".", lipgloss.Height(preview), m.height)
+		return m, m.repoSelect.Init()
+	case curd.BackToMenuMsg:
+		return m, func() tea.Msg { return BackToMenuMsg{} }
 	}
-	return m, nil
+
+	var cmd tea.Cmd
+	m.confirm, cmd = m.confirm.Update(msg)
+	return m, cmd
 }
 
 func (m CleanupModel) updateRepoSelect(msg tea.Msg) (CleanupModel, tea.Cmd) {
@@ -215,30 +215,7 @@ func (m CleanupModel) View() string {
 
 	switch m.step {
 	case cleanupStepDrop:
-		type dropOption struct {
-			label string
-			desc  string
-		}
-		options := []dropOption{
-			{label: "No", desc: "keep everything (default)"},
-			{label: "Yes", desc: "nuke local changes"},
-		}
-
-		s += prLabelStyle.Render("Drop uncommitted changes?") + "\n\n"
-		for i, opt := range options {
-			line := fmt.Sprintf("%s  %s", menuActiveName.Render(opt.label), menuActiveDesc.Render(opt.desc))
-			if i == m.dropCursor {
-				s += menuActiveItem.Render(line) + "\n"
-			} else {
-				inactiveLine := fmt.Sprintf("%s  %s", menuInactiveName.Render(opt.label), menuInactiveDesc.Render(opt.desc))
-				s += menuInactiveItem.Render(inactiveLine) + "\n"
-			}
-		}
-		s += curd.RenderHintBar(st, []curd.Hint{
-			{Key: "j/k", Desc: "move"},
-			{Key: "enter", Desc: "select"},
-			{Key: "esc", Desc: "back"},
-		})
+		s += m.confirm.View()
 		return s
 
 	case cleanupStepRepoSelect:

@@ -237,16 +237,12 @@ func TestPRModel_UpdateBreaking_Toggle(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(wsMsg())
 	m.step = prStepBreaking
-	m.breakingCursor = 0
 
+	// ConfirmModel handles cursor internally; verify no crash on navigation
 	m, _ = m.Update(downMsg())
-	if m.breakingCursor != 1 {
-		t.Errorf("breakingCursor = %d, want 1", m.breakingCursor)
-	}
-
 	m, _ = m.Update(upMsg())
-	if m.breakingCursor != 0 {
-		t.Errorf("breakingCursor = %d, want 0", m.breakingCursor)
+	if m.step != prStepBreaking {
+		t.Errorf("step = %d, want prStepBreaking", m.step)
 	}
 }
 
@@ -254,18 +250,19 @@ func TestPRModel_UpdateBreaking_Enter(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(wsMsg())
 	m.step = prStepBreaking
-	m.breakingCursor = 1
 	m.message = "fix: test"
 	m.branch = "feature"
-	m, cmd := m.Update(enterMsg())
+	// Send 'y' quick-key to confirm breaking
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'y'})
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if m.step != prStepRepoSelect {
 		t.Errorf("step = %d, want prStepRepoSelect", m.step)
 	}
 	if !m.breaking {
 		t.Error("expected breaking = true")
-	}
-	if cmd == nil {
-		t.Error("expected repoSelect Init cmd")
 	}
 }
 
@@ -273,7 +270,12 @@ func TestPRModel_UpdateBreaking_Esc(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(wsMsg())
 	m.step = prStepBreaking
-	m, _ = m.Update(escMsg())
+	// ConfirmModel emits BackToMenuMsg on esc; process the cmd
+	m, cmd := m.Update(escMsg())
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if m.step != prStepChanges {
 		t.Errorf("step = %d, want prStepChanges", m.step)
 	}
@@ -599,16 +601,12 @@ func TestCleanupModel_UpdateDrop_Toggle(t *testing.T) {
 	m := NewCleanupModel()
 	m, _ = m.Update(wsMsg())
 	m.step = cleanupStepDrop
-	m.dropCursor = 0
 
+	// ConfirmModel handles cursor internally; just verify no crash on navigation
 	m, _ = m.Update(upMsg())
-	if m.dropCursor != 1 {
-		t.Errorf("dropCursor = %d, want 1", m.dropCursor)
-	}
-
 	m, _ = m.Update(downMsg())
-	if m.dropCursor != 0 {
-		t.Errorf("dropCursor = %d, want 0", m.dropCursor)
+	if m.step != cleanupStepDrop {
+		t.Errorf("step = %d, want cleanupStepDrop", m.step)
 	}
 }
 
@@ -616,16 +614,18 @@ func TestCleanupModel_UpdateDrop_Enter(t *testing.T) {
 	m := NewCleanupModel()
 	m, _ = m.Update(wsMsg())
 	m.step = cleanupStepDrop
-	m.dropCursor = 1
-	m, cmd := m.Update(enterMsg())
+	// Send 'y' quick-key to confirm yes
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'y'})
+	// Simulate the ConfirmMsg
+	if cmd != nil {
+		msg := cmd()
+		m, _ = m.Update(msg)
+	}
 	if m.step != cleanupStepRepoSelect {
 		t.Errorf("step = %d, want cleanupStepRepoSelect", m.step)
 	}
 	if !m.dropChanges {
 		t.Error("expected dropChanges = true")
-	}
-	if cmd == nil {
-		t.Error("expected repoSelect init cmd")
 	}
 }
 

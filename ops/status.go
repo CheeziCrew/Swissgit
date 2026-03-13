@@ -10,6 +10,7 @@ import (
 // StatusResult holds the outcome of checking a single repo's status.
 type StatusResult struct {
 	RepoName      string
+	Path          string
 	Branch        string
 	DefaultBranch string
 	Modified      int
@@ -52,6 +53,7 @@ func GetRepoStatus(repoPath string) StatusResult {
 
 	return StatusResult{
 		RepoName:      repoName,
+		Path:          repoPath,
 		Branch:        branch,
 		DefaultBranch: defaultBranch,
 		Modified:      changes.Modified,

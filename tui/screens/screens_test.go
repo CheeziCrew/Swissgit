@@ -49,8 +49,8 @@ func TestNewCleanupModel(t *testing.T) {
 	if m.step != cleanupStepDrop {
 		t.Errorf("initial step = %d, want cleanupStepDrop (%d)", m.step, cleanupStepDrop)
 	}
-	if m.dropCursor != 0 {
-		t.Errorf("initial dropCursor = %d, want 0", m.dropCursor)
+	if m.dropChanges {
+		t.Error("initial dropChanges should be false")
 	}
 	v := m.View()
 	if v == "" {

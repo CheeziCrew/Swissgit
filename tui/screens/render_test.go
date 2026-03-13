@@ -233,7 +233,7 @@ func TestFormatBranchEntry(t *testing.T) {
 }
 
 func TestBranchesBanner(t *testing.T) {
-	b := branchesBanner(10, 3, 1, 6)
+	b := branchesBanner(10, 3, 1, 6, 2)
 	if !strings.Contains(b, "10 repos") {
 		t.Error("expected repo count")
 	}
