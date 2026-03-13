@@ -35,8 +35,8 @@ func TestNewCommitModel(t *testing.T) {
 func TestNewCommitModel_WithHistory(t *testing.T) {
 	msgs := []string{"fix: bug", "feat: new stuff"}
 	m := NewCommitModel(msgs)
-	if len(m.recentMessages) != 2 {
-		t.Errorf("recentMessages count = %d, want 2", len(m.recentMessages))
+	if m.history.Len() != 2 {
+		t.Errorf("history.Len() = %d, want 2", m.history.Len())
 	}
 	v := m.View()
 	if v == "" {

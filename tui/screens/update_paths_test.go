@@ -210,8 +210,8 @@ func TestCommitModel_HistoryBrowse(t *testing.T) {
 
 	// Browse up
 	m, _ = m.Update(upMsg())
-	if m.historyCursor < 0 {
-		t.Error("expected historyCursor >= 0 after up")
+	if !m.history.IsActive() {
+		t.Error("expected history active after up")
 	}
 
 	// Browse down
@@ -315,8 +315,8 @@ func TestPRModel_HistoryBrowse(t *testing.T) {
 	m, _ = m.Update(ws())
 
 	m, _ = m.Update(upMsg())
-	if m.historyCursor < 0 {
-		t.Error("expected historyCursor >= 0")
+	if !m.history.IsActive() {
+		t.Error("expected history active after up")
 	}
 	m, _ = m.Update(downMsg())
 }
