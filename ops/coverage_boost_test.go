@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -464,6 +465,9 @@ func TestCommitAndCreatePR_FullSuccess(t *testing.T) {
 	})
 
 	_, dir := makeTestRepoWithCommit(t, "org", "prrepo")
+	// Configure git identity for CI environments where it's not set globally
+	exec.Command("git", "-C", dir, "config", "user.name", "Test").Run()
+	exec.Command("git", "-C", dir, "config", "user.email", "test@test.com").Run()
 	os.WriteFile(filepath.Join(dir, "change.txt"), []byte("new"), 0644)
 
 	pushChanges = func(repo *gogit.Repository) error { return nil }
