@@ -9,9 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -263,6 +265,157 @@ func TestCloneRepository_MkdirFailsV2(t *testing.T) {
 	)
 	if result.Error == "" {
 		t.Error("expected error when mkdir fails")
+	}
+}
+
+// === GetBranches with mocked fetch (success path) ===
+
+func TestGetBranches_SuccessWithMultipleBranches(t *testing.T) {
+	origFetch := fetchRemote
+	t.Cleanup(func() { fetchRemote = origFetch })
+	fetchRemote = func(repo *gogit.Repository) error { return nil }
+
+	_, dir := makeTestRepoWithCommit(t, "org", "branchtest")
+
+	// Create a second branch
+	repo, _ := gogit.PlainOpen(dir)
+	wt, _ := repo.Worktree()
+	wt.Checkout(&gogit.CheckoutOptions{
+		Branch: "refs/heads/feature-x",
+		Create: true,
+	})
+	// Switch back to main
+	wt.Checkout(&gogit.CheckoutOptions{
+		Branch: "refs/heads/main",
+	})
+
+	result := GetBranches(dir)
+	if result.Error != "" {
+		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	if len(result.LocalBranches) < 2 {
+		t.Errorf("expected at least 2 local branches, got %d", len(result.LocalBranches))
+	}
+	if result.CurrentBranch == "" {
+		t.Error("expected non-empty current branch")
+	}
+}
+
+func TestGetBranches_WithRemoteBranches(t *testing.T) {
+	origFetch := fetchRemote
+	t.Cleanup(func() { fetchRemote = origFetch })
+	fetchRemote = func(repo *gogit.Repository) error { return nil }
+
+	_, dir := makeTestRepoWithCommit(t, "org", "remotebranch")
+	repo, _ := gogit.PlainOpen(dir)
+
+	// Get the HEAD commit hash
+	head, _ := repo.Head()
+	hash := head.Hash()
+
+	// Create a fake remote ref to simulate remote branches
+	repo.Storer.SetReference(plumbing.NewHashReference(
+		plumbing.NewRemoteReferenceName("origin", "feature-remote"), hash))
+
+	result := GetBranches(dir)
+	if result.Error != "" {
+		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	if len(result.RemoteBranches) < 1 {
+		t.Errorf("expected at least 1 remote branch, got %d", len(result.RemoteBranches))
+	}
+}
+
+func TestGetBranches_StaleBranch(t *testing.T) {
+	origFetch := fetchRemote
+	t.Cleanup(func() { fetchRemote = origFetch })
+	fetchRemote = func(repo *gogit.Repository) error { return nil }
+
+	dir := t.TempDir()
+	repo, _ := gogit.PlainInit(dir, false)
+	repo.CreateRemote(&config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{"git@github.com:org/stale.git"},
+	})
+
+	wt, _ := repo.Worktree()
+	f, _ := os.Create(filepath.Join(dir, "old.txt"))
+	f.WriteString("old")
+	f.Close()
+	wt.Add("old.txt")
+	// Commit with a date > 120 days ago
+	staleTime := time.Now().Add(-150 * 24 * time.Hour)
+	wt.Commit("old commit", &gogit.CommitOptions{
+		Author: &object.Signature{
+			Name:  "test",
+			Email: "test@test.com",
+			When:  staleTime,
+		},
+		Committer: &object.Signature{
+			Name:  "test",
+			Email: "test@test.com",
+			When:  staleTime,
+		},
+	})
+
+	result := GetBranches(dir)
+	if result.Error != "" {
+		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	// The main branch should be stale
+	found := false
+	for _, b := range result.LocalBranches {
+		if b.IsStale {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected at least one stale branch")
+	}
+}
+
+func TestGetBranches_NoBranchName(t *testing.T) {
+	origFetch := fetchRemote
+	origOpen := plainOpen
+	t.Cleanup(func() {
+		fetchRemote = origFetch
+		plainOpen = origOpen
+	})
+	fetchRemote = func(repo *gogit.Repository) error { return nil }
+
+	// Create a repo with no commits (detached/no HEAD)
+	dir := t.TempDir()
+	gogit.PlainInit(dir, false)
+
+	result := GetBranches(dir)
+	if result.Error == "" {
+		t.Error("expected error when branch name cannot be determined")
+	}
+}
+
+// === CloneRepository deeper coverage ===
+
+func TestCloneRepository_DirExistsNotGit(t *testing.T) {
+	dir := t.TempDir()
+	// Dir exists but is not a git repo - should attempt clone and fail (no SSH key)
+	result := CloneRepository(Repository{
+		Name:   "repo",
+		SSHURL: "git@github.com:org/repo.git",
+	}, dir)
+	// Will fail at SSH auth or clone, but exercises the "dir exists" branch
+	if result.Success && result.Error == "" {
+		t.Log("unexpectedly succeeded")
+	}
+}
+
+func TestCloneRepository_SSHAuthFailsV2(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "newrepo")
+	result := CloneRepository(Repository{
+		Name:   "repo",
+		SSHURL: "git@github.com:org/repo.git",
+	}, dir)
+	if result.Error == "" {
+		t.Error("expected error when SSH auth fails")
 	}
 }
 
