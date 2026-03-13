@@ -1,10 +1,8 @@
 package ops
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -36,23 +34,17 @@ type ghTeamPRResult struct {
 
 // FetchTeamRepoNames returns non-archived repo names for an org/team, excluding prefixes.
 func FetchTeamRepoNames(org, team string, excludePrefixes []string) ([]string, error) {
-	cmd := exec.Command("gh", "api",
+	out, err := ghRun("api",
 		fmt.Sprintf("/orgs/%s/teams/%s/repos", org, team),
 		"--paginate",
 		"--jq", ".[].name",
 	)
-
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-
-	if cmd.Run() != nil {
-		return nil, fmt.Errorf("gh api failed: %s", strings.TrimSpace(errBuf.String()))
+	if err != nil {
+		return nil, fmt.Errorf("gh api failed: %s", err)
 	}
 
 	var names []string
-	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
 		name := strings.TrimSpace(line)
 		if name == "" {
 			continue
@@ -68,24 +60,18 @@ func FetchTeamRepoNames(org, team string, excludePrefixes []string) ([]string, e
 
 // FetchTeamPRs finds all open PRs in the org and filters to team repos only.
 func FetchTeamPRs(org string, teamRepos []string) ([]TeamPR, error) {
-	cmd := exec.Command("gh", "search", "prs",
+	out, err := ghRun("search", "prs",
 		"--state=open",
 		"--owner="+org,
 		"--limit=200",
 		"--json", "repository,number,title,author,url,isDraft,createdAt",
 	)
-
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-
-	if cmd.Run() != nil {
-		return nil, fmt.Errorf("gh search failed: %s", strings.TrimSpace(errBuf.String()))
+	if err != nil {
+		return nil, fmt.Errorf("gh search failed: %s", err)
 	}
 
 	var results []ghTeamPRResult
-	if err := json.Unmarshal(out.Bytes(), &results); err != nil {
+	if err := json.Unmarshal([]byte(out), &results); err != nil {
 		return nil, fmt.Errorf("failed to parse gh output: %w", err)
 	}
 

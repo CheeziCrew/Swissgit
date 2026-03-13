@@ -38,7 +38,7 @@ func CommitAndCreatePR(repoPath, branchName, commitMessage, base string, changes
 		}
 	}
 
-	repo, err := gogit.PlainOpen(repoPath)
+	repo, err := plainOpen(repoPath)
 	if err != nil {
 		return PRResult{RepoName: commitResult.RepoName, Error: fmt.Sprintf("could not open repo: %s", err)}
 	}
@@ -86,7 +86,6 @@ func CreatePullRequest(repo *gogit.Repository, commitMessage, branch, base strin
 		return "", fmt.Errorf("failed to encode pull request data: %w", err)
 	}
 
-	client := &http.Client{}
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create HTTP request: %w", err)
@@ -95,7 +94,7 @@ func CreatePullRequest(repo *gogit.Repository, commitMessage, branch, base strin
 	req.Header.Set("Authorization", "token "+accessToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}

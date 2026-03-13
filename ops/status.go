@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/CheeziCrew/swissgit/git"
-	gogit "github.com/go-git/go-git/v5"
 )
 
 // StatusResult holds the outcome of checking a single repo's status.
@@ -27,12 +26,12 @@ type StatusResult struct {
 func GetRepoStatus(repoPath string) StatusResult {
 	repoName := filepath.Base(repoPath)
 
-	repo, err := gogit.PlainOpen(repoPath)
+	repo, err := plainOpen(repoPath)
 	if err != nil {
 		return StatusResult{RepoName: repoName, Error: fmt.Sprintf("could not open repository: %s", err)}
 	}
 
-	if err := git.FetchRemote(repo); err != nil {
+	if err := fetchRemote(repo); err != nil {
 		return StatusResult{RepoName: repoName, Error: fmt.Sprintf("could not fetch remote: %s", err)}
 	}
 
