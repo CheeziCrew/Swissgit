@@ -66,8 +66,8 @@ func TestPRModel_UpdateMessage_HistoryUpDown(t *testing.T) {
 
 	// Press up to browse history
 	m, _ = m.Update(upMsg())
-	if m.historyCursor != 0 {
-		t.Errorf("historyCursor after up = %d, want 0", m.historyCursor)
+	if m.history.cursor != 0 {
+		t.Errorf("history.cursor after up = %d, want 0", m.history.cursor)
 	}
 	if m.messageInput.Value() != "fix: first" {
 		t.Errorf("value = %q, want %q", m.messageInput.Value(), "fix: first")
@@ -75,20 +75,20 @@ func TestPRModel_UpdateMessage_HistoryUpDown(t *testing.T) {
 
 	// Press up again
 	m, _ = m.Update(upMsg())
-	if m.historyCursor != 1 {
-		t.Errorf("historyCursor after 2nd up = %d, want 1", m.historyCursor)
+	if m.history.cursor != 1 {
+		t.Errorf("history.cursor after 2nd up = %d, want 1", m.history.cursor)
 	}
 
 	// Press down to go back
 	m, _ = m.Update(downMsg())
-	if m.historyCursor != 0 {
-		t.Errorf("historyCursor after down = %d, want 0", m.historyCursor)
+	if m.history.cursor != 0 {
+		t.Errorf("history.cursor after down = %d, want 0", m.history.cursor)
 	}
 
 	// Press down past 0 to restore typed value
 	m, _ = m.Update(downMsg())
-	if m.historyCursor != -1 {
-		t.Errorf("historyCursor after 2nd down = %d, want -1", m.historyCursor)
+	if m.history.cursor != -1 {
+		t.Errorf("history.cursor after 2nd down = %d, want -1", m.history.cursor)
 	}
 	if m.messageInput.Value() != "current typing" {
 		t.Errorf("value = %q, want %q", m.messageInput.Value(), "current typing")
@@ -101,8 +101,8 @@ func TestPRModel_UpdateMessage_UpNoHistory(t *testing.T) {
 	m.step = prStepMessage
 	// Up with empty history should be no-op (fallthrough to text input update)
 	m, _ = m.Update(upMsg())
-	if m.historyCursor != -1 {
-		t.Errorf("historyCursor = %d, want -1", m.historyCursor)
+	if m.history.IsActive() {
+		t.Errorf("history should not be active, cursor = %d", m.history.cursor)
 	}
 }
 
@@ -110,7 +110,6 @@ func TestPRModel_UpdateMessage_DownNoHistory(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(wsMsg())
 	m.step = prStepMessage
-	m.historyCursor = -1
 	// Down with no cursor should be no-op
 	m, _ = m.Update(downMsg())
 }
@@ -121,13 +120,13 @@ func TestPRModel_UpdateMessage_RegularKey(t *testing.T) {
 	m.step = prStepMessage
 	// First browse up
 	m, _ = m.Update(upMsg())
-	if m.historyCursor != 0 {
-		t.Errorf("historyCursor = %d, want 0", m.historyCursor)
+	if !m.history.IsActive() {
+		t.Error("expected history active after up")
 	}
 	// Now type a regular key - should reset cursor
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'a'})
-	if m.historyCursor != -1 {
-		t.Errorf("historyCursor after regular key = %d, want -1", m.historyCursor)
+	if m.history.IsActive() {
+		t.Error("expected history inactive after regular key")
 	}
 }
 
@@ -732,13 +731,13 @@ func TestCommitModel_UpdateMessage_HistoryUpDown(t *testing.T) {
 	m.messageInput.SetValue("current")
 
 	m, _ = m.Update(upMsg())
-	if m.historyCursor != 0 {
-		t.Errorf("historyCursor = %d, want 0", m.historyCursor)
+	if m.history.cursor != 0 {
+		t.Errorf("history.cursor = %d, want 0", m.history.cursor)
 	}
 
 	m, _ = m.Update(downMsg())
-	if m.historyCursor != -1 {
-		t.Errorf("historyCursor = %d, want -1", m.historyCursor)
+	if m.history.cursor != -1 {
+		t.Errorf("history.cursor = %d, want -1", m.history.cursor)
 	}
 }
 
@@ -1350,25 +1349,24 @@ func TestUpdateResults_UnmatchedKey_AllScreens(t *testing.T) {
 	}
 }
 
-// === browseHistoryUp/Down edge cases ===
+// === HistoryBrowser edge cases (via PullRequestModel) ===
 
 func TestBrowseHistoryUp_AtMaxStaysAtMax(t *testing.T) {
 	recent := []string{"a", "b"}
 	m := NewPullRequestModel(recent)
 	m.messageInput.SetValue("typed")
-	m.historyCursor = -1
-	m.browseHistoryUp()
-	if m.historyCursor != 0 {
-		t.Errorf("cursor = %d, want 0", m.historyCursor)
+	m.history.BrowseUp(&m.messageInput)
+	if m.history.cursor != 0 {
+		t.Errorf("cursor = %d, want 0", m.history.cursor)
 	}
-	m.browseHistoryUp()
-	if m.historyCursor != 1 {
-		t.Errorf("cursor = %d, want 1", m.historyCursor)
+	m.history.BrowseUp(&m.messageInput)
+	if m.history.cursor != 1 {
+		t.Errorf("cursor = %d, want 1", m.history.cursor)
 	}
 	// At max, should stay at max
-	m.browseHistoryUp()
-	if m.historyCursor != 1 {
-		t.Errorf("cursor = %d, want 1 (clamped)", m.historyCursor)
+	m.history.BrowseUp(&m.messageInput)
+	if m.history.cursor != 1 {
+		t.Errorf("cursor = %d, want 1 (clamped)", m.history.cursor)
 	}
 }
 

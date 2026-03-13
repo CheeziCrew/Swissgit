@@ -48,9 +48,7 @@ type PullRequestModel struct {
 	breaking       bool
 	breakingCursor int // 0=no, 1=yes
 
-	recentMessages []string
-	historyCursor  int
-	typedValue     string
+	history HistoryBrowser
 
 	repoSelect RepoSelectModel
 	progress   components.ProgressModel
@@ -81,8 +79,7 @@ func NewPullRequestModel(recentMessages []string) PullRequestModel {
 		target:         "main",
 		changeTypes:    ops.ChangeTypes,
 		changeSelected: make(map[int]bool),
-		recentMessages: recentMessages,
-		historyCursor:  -1,
+		history:        NewHistoryBrowser(recentMessages),
 	}
 }
 
@@ -124,28 +121,6 @@ func (m PullRequestModel) Update(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m *PullRequestModel) browseHistoryUp() {
-	if m.historyCursor == -1 {
-		m.typedValue = m.messageInput.Value()
-	}
-	m.historyCursor++
-	if m.historyCursor >= len(m.recentMessages) {
-		m.historyCursor = len(m.recentMessages) - 1
-	}
-	m.messageInput.SetValue(m.recentMessages[m.historyCursor])
-	m.messageInput.CursorEnd()
-}
-
-func (m *PullRequestModel) browseHistoryDown() {
-	m.historyCursor--
-	if m.historyCursor < 0 {
-		m.messageInput.SetValue(m.typedValue)
-	} else {
-		m.messageInput.SetValue(m.recentMessages[m.historyCursor])
-	}
-	m.messageInput.CursorEnd()
-}
-
 func (m PullRequestModel) updateMessage(msg tea.Msg) (PullRequestModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
@@ -165,19 +140,19 @@ func (m PullRequestModel) updateMessage(msg tea.Msg) (PullRequestModel, tea.Cmd)
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
 		case key.Matches(msg, key.NewBinding(key.WithKeys("up"))):
-			if len(m.recentMessages) > 0 {
-				m.browseHistoryUp()
+			if m.history.Len() > 0 {
+				m.history.BrowseUp(&m.messageInput)
 				return m, nil
 			}
 		case key.Matches(msg, key.NewBinding(key.WithKeys("down"))):
-			if m.historyCursor >= 0 {
-				m.browseHistoryDown()
+			if m.history.IsActive() {
+				m.history.BrowseDown(&m.messageInput)
 				return m, nil
 			}
 		}
 	}
 	if _, ok := msg.(tea.KeyPressMsg); ok {
-		m.historyCursor = -1
+		m.history.Reset()
 	}
 	var cmd tea.Cmd
 	m.messageInput, cmd = m.messageInput.Update(msg)
@@ -424,8 +399,8 @@ func (m PullRequestModel) View() string {
 		var content string
 		content += prLabelStyle.Render("PR title / commit message") + "\n"
 		content += m.messageInput.View()
-		if len(m.recentMessages) > 0 {
-			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", len(m.recentMessages)))
+		if m.history.Len() > 0 {
+			content += "\n" + helpStyle.Render(fmt.Sprintf("↑↓ recent (%d)", m.history.Len()))
 		}
 		return s + inputBox.Render(content) + "\n\n" + curd.RenderHintBar(st, []curd.Hint{
 			{Key: "enter", Desc: "submit"},

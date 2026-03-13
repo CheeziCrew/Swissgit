@@ -136,7 +136,7 @@ func TestPRModel_ShowSummary_EmptyMessage(t *testing.T) {
 func TestPRModel_MessageHistoryBrowseUp(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(wsMsg())
-	m.recentMessages = []string{"old msg 1", "old msg 2"}
+	m.history = NewHistoryBrowser([]string{"old msg 1", "old msg 2"})
 	// Browse history up
 	m, _ = m.Update(upMsg())
 	// Browse up again
@@ -151,7 +151,7 @@ func TestPRModel_MessageHistoryBrowseUp(t *testing.T) {
 func TestPRModel_MessageHistoryResetOnType(t *testing.T) {
 	m := NewPullRequestModel(nil)
 	m, _ = m.Update(wsMsg())
-	m.recentMessages = []string{"old msg"}
+	m.history = NewHistoryBrowser([]string{"old msg"})
 	// Browse up first
 	m, _ = m.Update(upMsg())
 	// Type a char - should reset historyCursor
