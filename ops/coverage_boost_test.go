@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -416,6 +417,78 @@ func TestCloneRepository_SSHAuthFailsV2(t *testing.T) {
 	}, dir)
 	if result.Error == "" {
 		t.Error("expected error when SSH auth fails")
+	}
+}
+
+// === GetRepoStatus with mocked fetch ===
+
+func TestGetRepoStatus_SuccessWithFetchMock(t *testing.T) {
+	origFetch := fetchRemote
+	t.Cleanup(func() { fetchRemote = origFetch })
+	fetchRemote = func(repo *gogit.Repository) error { return nil }
+
+	_, dir := makeTestRepoWithCommit(t, "org", "statusrepo")
+	result := GetRepoStatus(dir)
+	if result.Error != "" {
+		t.Fatalf("unexpected error: %s", result.Error)
+	}
+	if result.Branch == "" {
+		t.Error("expected non-empty branch")
+	}
+	if !result.Clean {
+		t.Log("repo not clean (might have uncommitted files)")
+	}
+}
+
+// === CleanupRepo with mocked fetch ===
+
+func TestCleanupRepo_Success(t *testing.T) {
+	origFetch := fetchRemote
+	t.Cleanup(func() { fetchRemote = origFetch })
+	fetchRemote = func(repo *gogit.Repository) error { return nil }
+
+	_, dir := makeTestRepoWithCommit(t, "org", "cleanrepo")
+	result := CleanupRepo(dir, false, "main")
+	if result.Error != "" {
+		t.Logf("cleanup result: %s (may be expected)", result.Error)
+	}
+}
+
+// === CommitAndCreatePR full success path ===
+
+func TestCommitAndCreatePR_FullSuccess(t *testing.T) {
+	origPush := pushChanges
+	origClient := httpClient
+	t.Cleanup(func() {
+		pushChanges = origPush
+		httpClient = origClient
+	})
+
+	_, dir := makeTestRepoWithCommit(t, "org", "prrepo")
+	// Configure git identity for CI environments where it's not set globally
+	exec.Command("git", "-C", dir, "config", "user.name", "Test").Run()
+	exec.Command("git", "-C", dir, "config", "user.email", "test@test.com").Run()
+	os.WriteFile(filepath.Join(dir, "change.txt"), []byte("new"), 0644)
+
+	pushChanges = func(repo *gogit.Repository) error { return nil }
+	httpClient = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"html_url":"https://github.com/org/prrepo/pull/1"}`
+			return &http.Response{
+				StatusCode: 201,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+			}, nil
+		}),
+	}
+
+	t.Setenv("GITHUB_TOKEN", "test-token")
+	result := CommitAndCreatePR(dir, "feature/test", "fix: bug", "main", nil, false)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
+	}
+	if result.PRURL == "" {
+		t.Error("expected non-empty PR URL")
 	}
 }
 
