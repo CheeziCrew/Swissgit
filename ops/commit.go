@@ -2,8 +2,6 @@ package ops
 
 import (
 	"fmt"
-	"io"
-	"os/exec"
 
 	"github.com/CheeziCrew/swissgit/git"
 	gogit "github.com/go-git/go-git/v5"
@@ -22,7 +20,7 @@ type CommitResult struct {
 // Uses shell git add (to respect .gitignore) and shell git commit,
 // then go-git for push.
 func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
-	repo, err := gogit.PlainOpen(repoPath)
+	repo, err := plainOpen(repoPath)
 	if err != nil {
 		return CommitResult{Error: fmt.Sprintf("failed to open repository: %s", err)}
 	}
@@ -47,10 +45,8 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 	}
 	result.Branch = branchName
 
-	cmd := exec.Command("git", "-C", repoPath, "add", ".") // shell git to respect .gitignore
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil {
+	// shell git to respect .gitignore
+	if _, err := gitRunInDir(repoPath, "-C", repoPath, "add", "."); err != nil {
 		result.Error = fmt.Sprintf("failed to add files: %s", err)
 		return result
 	}
@@ -68,15 +64,12 @@ func CommitAndPush(repoPath, branchName, commitMessage string) CommitResult {
 	}
 
 	fullMessage := fmt.Sprintf("%s: %s", branchName, commitMessage)
-	commitCmd := exec.Command("git", "-C", repoPath, "commit", "-m", fullMessage)
-	commitCmd.Stdout = io.Discard
-	commitCmd.Stderr = io.Discard
-	if err := commitCmd.Run(); err != nil {
+	if _, err := gitRunInDir(repoPath, "-C", repoPath, "commit", "-m", fullMessage); err != nil {
 		result.Error = fmt.Sprintf("failed to commit changes: %s", err)
 		return result
 	}
 
-	if err := git.PushChanges(repo); err != nil {
+	if err := pushChanges(repo); err != nil {
 		result.Error = fmt.Sprintf("failed to push changes: %s", err)
 		return result
 	}

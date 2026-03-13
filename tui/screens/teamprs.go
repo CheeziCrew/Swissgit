@@ -276,6 +276,35 @@ func prLink(url, text string) string {
 	return tpLink.Hyperlink(url).Render(text)
 }
 
+func renderPRLine(pr ops.TeamPR) string {
+	bullet := tpBullet
+	title := prLink(pr.URL, pr.Title)
+	meta := tpAuthor.Render(pr.Author)
+	if ops.IsBot(pr.Author) {
+		bullet = tpBotBullet
+		meta = tpBotMark
+	}
+	if pr.Draft {
+		meta += " " + tpDraftMark
+	}
+	if !pr.CreatedAt.IsZero() {
+		meta += " " + tpDot + " " + formatAge(pr.CreatedAt)
+	}
+	return fmt.Sprintf("    %s %s %s %s\n", bullet, title, tpDot, meta)
+}
+
+func groupPRsByRepo(prs []ops.TeamPR) (map[string][]ops.TeamPR, []string) {
+	grouped := make(map[string][]ops.TeamPR)
+	var repoOrder []string
+	for _, pr := range prs {
+		if _, exists := grouped[pr.Repo]; !exists {
+			repoOrder = append(repoOrder, pr.Repo)
+		}
+		grouped[pr.Repo] = append(grouped[pr.Repo], pr)
+	}
+	return grouped, repoOrder
+}
+
 func (m TeamPRsModel) renderTable() string {
 	if len(m.prs) == 0 {
 		return tpDim.Render("No open PRs found for this team.")
@@ -288,14 +317,7 @@ func (m TeamPRsModel) renderTable() string {
 		return m.prs[i].Number < m.prs[j].Number
 	})
 
-	grouped := make(map[string][]ops.TeamPR)
-	var repoOrder []string
-	for _, pr := range m.prs {
-		if _, exists := grouped[pr.Repo]; !exists {
-			repoOrder = append(repoOrder, pr.Repo)
-		}
-		grouped[pr.Repo] = append(grouped[pr.Repo], pr)
-	}
+	grouped, repoOrder := groupPRsByRepo(m.prs)
 
 	var b strings.Builder
 	for i, repo := range repoOrder {
@@ -305,20 +327,7 @@ func (m TeamPRsModel) renderTable() string {
 		prs := grouped[repo]
 		b.WriteString("  " + tpRepoName.Render(repo) + " " + tpRepoCount.Render(fmt.Sprintf("(%d)", len(prs))) + "\n")
 		for _, pr := range prs {
-			bullet := tpBullet
-			title := prLink(pr.URL, pr.Title)
-			meta := tpAuthor.Render(pr.Author)
-			if ops.IsBot(pr.Author) {
-				bullet = tpBotBullet
-				meta = tpBotMark
-			}
-			if pr.Draft {
-				meta += " " + tpDraftMark
-			}
-			if !pr.CreatedAt.IsZero() {
-				meta += " " + tpDot + " " + formatAge(pr.CreatedAt)
-			}
-			b.WriteString(fmt.Sprintf("    %s %s %s %s\n", bullet, title, tpDot, meta))
+			b.WriteString(renderPRLine(pr))
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")

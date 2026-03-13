@@ -1,12 +1,9 @@
 package ops
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strconv"
-	"strings"
 )
 
 // PRInfo represents an approved PR found via gh search.
@@ -35,7 +32,7 @@ type ghSearchResult struct {
 
 // FetchApprovedPRs finds all open PRs authored by the current user with approved reviews.
 func FetchApprovedPRs(org string) ([]PRInfo, error) {
-	cmd := exec.Command("gh", "search", "prs",
+	out, err := ghRun("search", "prs",
 		"--author=@me",
 		"--review=approved",
 		"--state=open",
@@ -43,18 +40,12 @@ func FetchApprovedPRs(org string) ([]PRInfo, error) {
 		"--limit=200",
 		"--json", "repository,number,title",
 	)
-
-	var out bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &errBuf
-
-	if cmd.Run() != nil {
-		return nil, fmt.Errorf("gh search failed: %s", strings.TrimSpace(errBuf.String()))
+	if err != nil {
+		return nil, fmt.Errorf("gh search failed: %s", err)
 	}
 
 	var results []ghSearchResult
-	if err := json.Unmarshal(out.Bytes(), &results); err != nil {
+	if err := json.Unmarshal([]byte(out), &results); err != nil {
 		return nil, fmt.Errorf("failed to parse gh output: %w", err)
 	}
 
@@ -78,18 +69,14 @@ func MergePR(org, repo string, number int) MergePRResult {
 	}
 
 	fullRepo := fmt.Sprintf("%s/%s", org, repo)
-	cmd := exec.Command("gh", "pr", "merge",
+	_, err := ghRun("pr", "merge",
 		strconv.Itoa(number),
 		"--repo", fullRepo,
 		"--merge",
 		"--delete-branch",
 	)
-
-	var errBuf bytes.Buffer
-	cmd.Stderr = &errBuf
-
-	if cmd.Run() != nil {
-		result.Error = fmt.Sprintf("merge failed: %s", strings.TrimSpace(errBuf.String()))
+	if err != nil {
+		result.Error = fmt.Sprintf("merge failed: %s", err)
 		return result
 	}
 

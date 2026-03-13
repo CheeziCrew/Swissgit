@@ -9,7 +9,7 @@ import (
 
 // FetchRemote fetches from the origin remote with SSH auth.
 func FetchRemote(repo *gogit.Repository) error {
-	auth, err := SSHAuth()
+	auth, err := sshAuthFunc()
 	if err != nil {
 		return fmt.Errorf("failed to set up SSH authentication: %w", err)
 	}
