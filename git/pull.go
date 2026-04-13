@@ -8,15 +8,16 @@ import (
 )
 
 // PullChanges pulls changes from the remote using SSH auth.
-func PullChanges(worktree *gogit.Worktree) error {
+func PullChanges(repo *gogit.Repository, worktree *gogit.Worktree) error {
 	auth, err := sshAuthFunc()
 	if err != nil {
 		return fmt.Errorf("failed to set up SSH authentication: %w", err)
 	}
 
 	err = worktree.Pull(&gogit.PullOptions{
-		Progress: io.Discard,
-		Auth:     auth,
+		RemoteURL: RemoteURL(repo),
+		Progress:  io.Discard,
+		Auth:      auth,
 	})
 	if err != nil && err != gogit.NoErrAlreadyUpToDate {
 		return fmt.Errorf("failed to pull changes: %w", err)

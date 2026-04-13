@@ -15,9 +15,10 @@ func FetchRemote(repo *gogit.Repository) error {
 	}
 
 	err = repo.Fetch(&gogit.FetchOptions{
-		Prune:    true,
-		Progress: io.Discard,
-		Auth:     auth,
+		RemoteURL: RemoteURL(repo),
+		Prune:     true,
+		Progress:  io.Discard,
+		Auth:      auth,
 	})
 
 	if err != nil && err != gogit.NoErrAlreadyUpToDate {

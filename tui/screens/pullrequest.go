@@ -61,6 +61,7 @@ type PullRequestModel struct {
 	target          string
 	changes         []string
 	repos           []string
+	throttle        *taskThrottle
 	preselectedRepo string
 	height          int
 }
@@ -283,16 +284,14 @@ func (m *PullRequestModel) startPRTasks() tea.Cmd {
 		tasks = append(tasks, components.RepoTask{
 			Name:   name,
 			Path:   p,
-			Status: components.TaskRunning,
+			Status: components.TaskPending,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.step = prStepProgress
 
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.progress.Init())
-
+	var taskCmds []tea.Cmd
 	for i, p := range m.repos {
 		idx := i
 		path := p
@@ -302,13 +301,15 @@ func (m *PullRequestModel) startPRTasks() tea.Cmd {
 		changes := m.changes
 		breaking := m.breaking
 
-		cmds = append(cmds, func() tea.Msg {
+		taskCmds = append(taskCmds, func() tea.Msg {
 			result := ops.CommitAndCreatePR(path, branch, message, target, changes, breaking)
 			return prTaskDoneMsg{index: idx, result: result}
 		})
 	}
 
-	return tea.Batch(cmds...)
+	m.throttle = newThrottle(taskCmds)
+	initial := m.throttle.Start(&m.progress)
+	return tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 }
 
 func (m PullRequestModel) updateProgress(msg tea.Msg) (PullRequestModel, tea.Cmd) {
@@ -329,6 +330,9 @@ func (m PullRequestModel) updateProgress(msg tea.Msg) (PullRequestModel, tea.Cmd
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:

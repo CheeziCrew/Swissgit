@@ -39,6 +39,7 @@ type CleanupModel struct {
 	progress   components.ProgressModel
 	results    components.ResultModel
 	repos      []string
+	throttle   *taskThrottle
 	viewport   viewport.Model
 	viewReady  bool
 	height     int
@@ -132,28 +133,28 @@ func (m *CleanupModel) startCleanupTasks() tea.Cmd {
 		tasks = append(tasks, components.RepoTask{
 			Name:   name,
 			Path:   p,
-			Status: components.TaskRunning,
+			Status: components.TaskPending,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.step = cleanupStepProgress
 
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.progress.Init())
-
+	var taskCmds []tea.Cmd
 	for i, p := range m.repos {
 		idx := i
 		path := p
 		drop := m.dropChanges
 
-		cmds = append(cmds, func() tea.Msg {
+		taskCmds = append(taskCmds, func() tea.Msg {
 			result := ops.CleanupRepo(path, drop, "main")
 			return cleanupTaskDoneMsg{index: idx, result: result}
 		})
 	}
 
-	return tea.Batch(cmds...)
+	m.throttle = newThrottle(taskCmds)
+	initial := m.throttle.Start(&m.progress)
+	return tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 }
 
 func (m CleanupModel) updateProgress(msg tea.Msg) (CleanupModel, tea.Cmd) {
@@ -181,6 +182,9 @@ func (m CleanupModel) updateProgress(msg tea.Msg) (CleanupModel, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:

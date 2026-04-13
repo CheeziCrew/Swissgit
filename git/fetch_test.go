@@ -65,7 +65,7 @@ func TestPullChanges_SSHAuthError(t *testing.T) {
 		// in-memory repos without filesystem won't have worktrees
 		t.Skip("in-memory repo has no worktree")
 	}
-	err = PullChanges(wt)
+	err = PullChanges(repo, wt)
 	if err == nil {
 		t.Fatal("expected error when SSH auth fails")
 	}

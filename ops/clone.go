@@ -52,7 +52,7 @@ func CloneRepository(repo Repository, destPath string) CloneResult {
 	}
 
 	_, err = gogit.PlainClone(destPath, false, &gogit.CloneOptions{
-		URL:      repo.SSHURL,
+		URL:      git.RewriteRemoteURL(repo.SSHURL),
 		Progress: io.Discard,
 		Auth:     auth,
 	})

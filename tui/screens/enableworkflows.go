@@ -53,6 +53,7 @@ type EnableWorkflowsModel struct {
 
 	spinner   spinner.Model
 	repos     []string
+	throttle  *taskThrottle
 	progress  components.ProgressModel
 	results   components.ResultModel
 	viewport  viewport.Model
@@ -226,16 +227,14 @@ func (m *EnableWorkflowsModel) startTasks() tea.Cmd {
 	for _, repo := range m.repos {
 		tasks = append(tasks, components.RepoTask{
 			Name:   repo,
-			Status: components.TaskRunning,
+			Status: components.TaskPending,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.step = enableWFStepProgress
 
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.progress.Init())
-
+	var taskCmds []tea.Cmd
 	for i, repo := range m.repos {
 		idx := i
 		repoName := repo
@@ -243,13 +242,15 @@ func (m *EnableWorkflowsModel) startTasks() tea.Cmd {
 		wfName := m.workflowName
 		prefix := m.prBranch
 
-		cmds = append(cmds, func() tea.Msg {
+		taskCmds = append(taskCmds, func() tea.Msg {
 			result := ops.FindAndEnableWorkflows(org, repoName, wfName, prefix)
 			return enableWFTaskDoneMsg{index: idx, result: result}
 		})
 	}
 
-	return tea.Batch(cmds...)
+	m.throttle = newThrottle(taskCmds)
+	initial := m.throttle.Start(&m.progress)
+	return tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 }
 
 func (m EnableWorkflowsModel) updateProgress(msg tea.Msg) (EnableWorkflowsModel, tea.Cmd) {
@@ -277,6 +278,9 @@ func (m EnableWorkflowsModel) updateProgress(msg tea.Msg) (EnableWorkflowsModel,
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:

@@ -36,6 +36,7 @@ type AutomergeModel struct {
 	progress  components.ProgressModel
 	results   components.ResultModel
 	repos     []string
+	throttle  *taskThrottle
 	height    int
 	viewport  viewport.Model
 	viewReady bool
@@ -117,28 +118,28 @@ func (m *AutomergeModel) startAutomergeTasks() tea.Cmd {
 		tasks = append(tasks, components.RepoTask{
 			Name:   name,
 			Path:   p,
-			Status: components.TaskRunning,
+			Status: components.TaskPending,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.step = automergeStepProgress
 
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.progress.Init())
-
+	var taskCmds []tea.Cmd
 	for i, p := range m.repos {
 		idx := i
 		path := p
 		target := m.target
 
-		cmds = append(cmds, func() tea.Msg {
+		taskCmds = append(taskCmds, func() tea.Msg {
 			result := ops.EnableAutomerge(target, path)
 			return automergeTaskDoneMsg{index: idx, result: result}
 		})
 	}
 
-	return tea.Batch(cmds...)
+	m.throttle = newThrottle(taskCmds)
+	initial := m.throttle.Start(&m.progress)
+	return tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 }
 
 func (m AutomergeModel) updateProgress(msg tea.Msg) (AutomergeModel, tea.Cmd) {
@@ -159,6 +160,9 @@ func (m AutomergeModel) updateProgress(msg tea.Msg) (AutomergeModel, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:

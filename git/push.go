@@ -21,8 +21,9 @@ func PushChanges(repo *gogit.Repository) error {
 	}
 
 	err = repo.Push(&gogit.PushOptions{
-		Progress: io.Discard,
-		Auth:     auth,
+		RemoteURL: RemoteURL(repo),
+		Progress:  io.Discard,
+		Auth:      auth,
 		RefSpecs: []config.RefSpec{
 			config.RefSpec(head.Name().String() + ":" + head.Name().String()),
 		},

@@ -135,7 +135,7 @@ func TestPullChanges_Success(t *testing.T) {
 		t.Fatalf("get worktree: %v", err)
 	}
 
-	err = PullChanges(wt)
+	err = PullChanges(repo, wt)
 	// Already up to date is fine
 	if err != nil {
 		t.Errorf("expected success for local pull, got: %v", err)

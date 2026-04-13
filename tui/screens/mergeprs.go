@@ -61,7 +61,14 @@ type MergePRsModel struct {
 	// Batching state
 	batchSize  int
 	waitMin    int
-	batchIndex int // which batch we're on (0-based)
+	batchIndex int // which cycle we're on (1-based)
+
+	// Cycle-level tracking (reset each cycle)
+	cycleMerged      int               // successful merges in current cycle
+	cycleTarget      int               // = batchSize
+	cycleFailed      map[string]string  // "repo #number" -> error message
+	cycleFailedOrder []string           // ordered keys for display
+	cycleRetry       bool              // true when re-fetching within same cycle
 
 	// Waiting countdown
 	waitRemaining int // seconds left
@@ -88,11 +95,12 @@ func NewMergePRsModel() MergePRsModel {
 	s.Style = lipgloss.NewStyle().Foreground(colorMagenta)
 
 	return MergePRsModel{
-		step:      mergePRsStepInput,
-		orgInput:  oi,
-		spinner:   s,
-		batchSize: defaultBatchSize,
-		waitMin:   defaultWaitMin,
+		step:        mergePRsStepInput,
+		orgInput:    oi,
+		spinner:     s,
+		batchSize:   defaultBatchSize,
+		waitMin:     defaultWaitMin,
+		cycleFailed: make(map[string]string),
 	}
 }
 
@@ -180,6 +188,35 @@ func (m MergePRsModel) updateFetching(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 		}
 
 		m.prs = msg.prs
+
+		// Fresh cycle: reset cycle tracking
+		if !m.cycleRetry {
+			m.batchIndex++
+			m.cycleMerged = 0
+			m.cycleTarget = m.batchSize
+			m.cycleFailed = make(map[string]string)
+			m.cycleFailedOrder = nil
+		}
+
+		// Check if any PRs are eligible (not already failed this cycle)
+		hasEligible := false
+		for _, pr := range m.prs {
+			if _, failed := m.cycleFailed[prKey(pr)]; !failed {
+				hasEligible = true
+				break
+			}
+		}
+
+		if !hasEligible {
+			// No eligible PRs — cycle is done
+			if m.cycleRetry {
+				// We were retrying within a cycle; enter wait for next cycle
+				return m, m.startWait()
+			}
+			// Fresh fetch returned nothing eligible — we're done
+			return m.goToResults()
+		}
+
 		return m, m.startBatch()
 
 	case spinner.TickMsg:
@@ -196,23 +233,33 @@ func (m MergePRsModel) updateFetching(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 }
 
 func (m *MergePRsModel) startBatch() tea.Cmd {
-	end := m.batchSize
-	if end > len(m.prs) {
-		end = len(m.prs)
+	remaining := m.cycleTarget - m.cycleMerged
+
+	// Filter out PRs that already failed in this cycle
+	var eligible []ops.PRInfo
+	for _, pr := range m.prs {
+		if _, failed := m.cycleFailed[prKey(pr)]; !failed {
+			eligible = append(eligible, pr)
+		}
 	}
-	batch := m.prs[:end]
+
+	// Take up to 'remaining' from eligible
+	end := remaining
+	if end > len(eligible) {
+		end = len(eligible)
+	}
+	batch := eligible[:end]
 
 	var tasks []components.RepoTask
 	for _, pr := range batch {
 		tasks = append(tasks, components.RepoTask{
-			Name:   fmt.Sprintf("%s #%d", pr.Repo, pr.Number),
+			Name:   prKey(pr),
 			Status: components.TaskRunning,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.step = mergePRsStepProgress
-	m.batchIndex++
 
 	var cmds []tea.Cmd
 	cmds = append(cmds, m.progress.Init())
@@ -256,24 +303,25 @@ func (m MergePRsModel) updateProgress(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 			switch t.Status {
 			case components.TaskDone:
 				m.merged++
+				m.cycleMerged++
 			case components.TaskFailed:
 				m.failed++
+				if _, exists := m.cycleFailed[t.Name]; !exists {
+					m.cycleFailed[t.Name] = t.Error
+					m.cycleFailedOrder = append(m.cycleFailedOrder, t.Name)
+				}
 			}
 		}
 
-		// Remove merged PRs from the queue
-		end := m.batchSize
-		if end > len(m.prs) {
-			end = len(m.prs)
-		}
-		m.prs = m.prs[end:]
-
-		// If the queue is empty, we're done — no point waiting
-		if len(m.prs) == 0 {
-			return m.goToResults()
+		// Cycle target met — wait before next cycle
+		if m.cycleMerged >= m.cycleTarget {
+			return m, m.startWait()
 		}
 
-		return m, m.startWait()
+		// Still need more merges — re-fetch immediately within the same cycle
+		m.cycleRetry = true
+		m.step = mergePRsStepFetching
+		return m, tea.Batch(m.spinner.Tick, m.fetchPRs())
 	}
 
 	var cmd tea.Cmd
@@ -294,6 +342,7 @@ func (m MergePRsModel) updateWaiting(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 	case mergeWaitTickMsg:
 		m.waitRemaining--
 		if m.waitRemaining <= 0 {
+			m.cycleRetry = false
 			m.step = mergePRsStepFetching
 			return m, tea.Batch(m.spinner.Tick, m.fetchPRs())
 		}
@@ -304,6 +353,7 @@ func (m MergePRsModel) updateWaiting(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 		msg := msg.(tea.KeyPressMsg)
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("enter"))):
+			m.cycleRetry = false
 			m.step = mergePRsStepFetching
 			return m, tea.Batch(m.spinner.Tick, m.fetchPRs())
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
@@ -388,15 +438,41 @@ func (m MergePRsModel) View() string {
 	return s
 }
 
+func prKey(pr ops.PRInfo) string {
+	return fmt.Sprintf("%s #%d", pr.Repo, pr.Number)
+}
+
 func (m MergePRsModel) summaryView() string {
 	lines := []string{
 		summaryLine("org", m.org),
 	}
 	if m.batchIndex > 0 {
-		lines = append(lines, summaryLine("batch", fmt.Sprintf("#%d (size %d, wait %dm)", m.batchIndex, m.batchSize, m.waitMin)))
+		cycleInfo := fmt.Sprintf("#%d (%d merged", m.batchIndex, m.cycleMerged)
+		if len(m.cycleFailed) > 0 {
+			cycleInfo += fmt.Sprintf(", %d failed", len(m.cycleFailed))
+		}
+		cycleInfo += fmt.Sprintf(", wait %dm)", m.waitMin)
+		lines = append(lines, summaryLine("cycle", cycleInfo))
 	}
 	if m.merged > 0 || m.failed > 0 {
 		lines = append(lines, summaryLine("total", fmt.Sprintf("%d merged, %d failed", m.merged, m.failed)))
 	}
-	return summaryBlock(lines...)
+
+	s := summaryBlock(lines...)
+
+	// Show per-PR failure details for the current cycle
+	if len(m.cycleFailedOrder) > 0 {
+		failStyle := lipgloss.NewStyle().Foreground(colorRed)
+		s += "\n"
+		for _, name := range m.cycleFailedOrder {
+			errMsg := m.cycleFailed[name]
+			if len(errMsg) > 80 {
+				errMsg = errMsg[len(errMsg)-77:] + "..."
+			}
+			s += fmt.Sprintf("  %s %s\n", failStyle.Render("✗"), name)
+			s += fmt.Sprintf("    %s\n", descStyle.Render(errMsg))
+		}
+	}
+
+	return s
 }

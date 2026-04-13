@@ -45,6 +45,7 @@ type CloneModel struct {
 
 	progress  components.ProgressModel
 	results   components.ResultModel
+	throttle  *taskThrottle
 	viewport  viewport.Model
 	viewReady bool
 	height    int
@@ -222,23 +223,24 @@ func (m CloneModel) updateProgress(msg tea.Msg) (CloneModel, tea.Cmd) {
 			tasks = append(tasks, components.RepoTask{
 				Name:   r.Name,
 				Path:   filepath.Join(destPath, r.Name),
-				Status: components.TaskRunning,
+				Status: components.TaskPending,
 			})
 		}
 		m.progress = components.NewProgressModel(tasks)
 
-		var cmds []tea.Cmd
-		cmds = append(cmds, m.progress.Init())
+		var taskCmds []tea.Cmd
 		for i, r := range msg.repos {
 			idx := i
 			repo := r
 			dest := filepath.Join(destPath, r.Name)
-			cmds = append(cmds, func() tea.Msg {
+			taskCmds = append(taskCmds, func() tea.Msg {
 				result := ops.CloneRepository(repo, dest)
 				return cloneTaskDoneMsg{index: idx, result: result}
 			})
 		}
-		return m, tea.Batch(cmds...)
+		m.throttle = newThrottle(taskCmds)
+		initial := m.throttle.Start(&m.progress)
+		return m, tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 
 	case cloneTaskDoneMsg:
 		status := components.TaskDone
@@ -256,6 +258,9 @@ func (m CloneModel) updateProgress(msg tea.Msg) (CloneModel, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:

@@ -33,7 +33,7 @@ func TestPullChanges_SSHAuthFails(t *testing.T) {
 		return nil, fmt.Errorf("SSH key not found")
 	}
 
-	err := PullChanges(nil)
+	err := PullChanges(nil, nil)
 	if err == nil {
 		t.Error("expected error when SSH auth fails")
 	}

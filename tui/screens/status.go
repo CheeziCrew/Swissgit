@@ -88,6 +88,7 @@ type StatusModel struct {
 	step       statusStep
 	progress   components.ProgressModel
 	results    []ops.StatusResult
+	throttle   *taskThrottle
 	dirtyRepos []ops.StatusResult
 	cursor     int
 	diffView   viewport.Model
@@ -127,26 +128,26 @@ func (m *StatusModel) startStatusTasks(paths []string) tea.Cmd {
 		tasks = append(tasks, components.RepoTask{
 			Name:   name,
 			Path:   p,
-			Status: components.TaskRunning,
+			Status: components.TaskPending,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.results = make([]ops.StatusResult, len(paths))
 
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.progress.Init())
-
+	var taskCmds []tea.Cmd
 	for i, p := range paths {
 		idx := i
 		path := p
-		cmds = append(cmds, func() tea.Msg {
+		taskCmds = append(taskCmds, func() tea.Msg {
 			result := ops.GetRepoStatus(path)
 			return statusTaskDoneMsg{index: idx, result: result}
 		})
 	}
 
-	return tea.Batch(cmds...)
+	m.throttle = newThrottle(taskCmds)
+	initial := m.throttle.Start(&m.progress)
+	return tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 }
 
 func (m StatusModel) Update(msg tea.Msg) (StatusModel, tea.Cmd) {
@@ -201,6 +202,9 @@ func (m StatusModel) updateProgress(msg tea.Msg) (StatusModel, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:
@@ -243,13 +247,13 @@ func (m StatusModel) updateResults(msg tea.Msg) (StatusModel, tea.Cmd) {
 		switch {
 		case key.Matches(msg, key.NewBinding(key.WithKeys("esc", "q"))):
 			return m, func() tea.Msg { return BackToMenuMsg{} }
-		case key.Matches(msg, key.NewBinding(key.WithKeys("j", "down"))):
+		case key.Matches(msg, key.NewBinding(key.WithKeys("j"))):
 			if len(m.dirtyRepos) > 0 {
 				m.cursor = (m.cursor + 1) % len(m.dirtyRepos)
 				m.viewport.SetContent(m.renderResults())
 			}
 			return m, nil
-		case key.Matches(msg, key.NewBinding(key.WithKeys("k", "up"))):
+		case key.Matches(msg, key.NewBinding(key.WithKeys("k"))):
 			if len(m.dirtyRepos) > 0 {
 				m.cursor = (m.cursor - 1 + len(m.dirtyRepos)) % len(m.dirtyRepos)
 				m.viewport.SetContent(m.renderResults())

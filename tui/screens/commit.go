@@ -47,6 +47,7 @@ type CommitModel struct {
 	progress   components.ProgressModel
 	results    components.ResultModel
 	repos      []string
+	throttle   *taskThrottle
 	viewport   viewport.Model
 	viewReady  bool
 	height     int
@@ -201,29 +202,29 @@ func (m *CommitModel) startCommitTasks() tea.Cmd {
 		tasks = append(tasks, components.RepoTask{
 			Name:   name,
 			Path:   p,
-			Status: components.TaskRunning,
+			Status: components.TaskPending,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.step = commitStepProgress
 
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.progress.Init())
-
+	var taskCmds []tea.Cmd
 	for i, p := range m.repos {
 		idx := i
 		path := p
 		branch := m.branch
 		message := m.message
 
-		cmds = append(cmds, func() tea.Msg {
+		taskCmds = append(taskCmds, func() tea.Msg {
 			result := ops.CommitAndPush(path, branch, message)
 			return commitTaskDoneMsg{index: idx, result: result}
 		})
 	}
 
-	return tea.Batch(cmds...)
+	m.throttle = newThrottle(taskCmds)
+	initial := m.throttle.Start(&m.progress)
+	return tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 }
 
 func (m CommitModel) updateProgress(msg tea.Msg) (CommitModel, tea.Cmd) {
@@ -240,6 +241,9 @@ func (m CommitModel) updateProgress(msg tea.Msg) (CommitModel, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:

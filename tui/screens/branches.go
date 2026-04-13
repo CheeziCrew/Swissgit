@@ -77,6 +77,7 @@ type BranchesModel struct {
 	step      branchesStep
 	progress  components.ProgressModel
 	results   []ops.BranchesResult
+	throttle  *taskThrottle
 	viewport  viewport.Model
 	viewReady bool
 	confirm   curd.ConfirmModel
@@ -114,26 +115,26 @@ func (m *BranchesModel) startBranchesTasks(paths []string) tea.Cmd {
 		tasks = append(tasks, components.RepoTask{
 			Name:   name,
 			Path:   p,
-			Status: components.TaskRunning,
+			Status: components.TaskPending,
 		})
 	}
 
 	m.progress = components.NewProgressModel(tasks)
 	m.results = make([]ops.BranchesResult, len(paths))
 
-	var cmds []tea.Cmd
-	cmds = append(cmds, m.progress.Init())
-
+	var taskCmds []tea.Cmd
 	for i, p := range paths {
 		idx := i
 		path := p
-		cmds = append(cmds, func() tea.Msg {
+		taskCmds = append(taskCmds, func() tea.Msg {
 			result := ops.GetBranches(path)
 			return branchesTaskDoneMsg{index: idx, result: result}
 		})
 	}
 
-	return tea.Batch(cmds...)
+	m.throttle = newThrottle(taskCmds)
+	initial := m.throttle.Start(&m.progress)
+	return tea.Batch(append([]tea.Cmd{m.progress.Init()}, initial...)...)
 }
 
 func (m BranchesModel) Update(msg tea.Msg) (BranchesModel, tea.Cmd) {
@@ -185,6 +186,9 @@ func (m BranchesModel) updateProgress(msg tea.Msg) (BranchesModel, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.progress, cmd = m.progress.Update(updateMsg)
+		if next := m.throttle.Dispatch(&m.progress); next != nil {
+			return m, tea.Batch(cmd, next)
+		}
 		return m, cmd
 
 	case components.AllTasksDoneMsg:
