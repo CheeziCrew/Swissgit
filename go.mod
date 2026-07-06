@@ -3,10 +3,10 @@ module github.com/CheeziCrew/swissgit
 go 1.25.0
 
 require (
-	charm.land/bubbles/v2 v2.1.0
+	charm.land/bubbles/v2 v2.1.1
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/lipgloss/v2 v2.0.5
-	github.com/CheeziCrew/curd v0.2.14
+	github.com/CheeziCrew/curd v0.2.15
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.10.2
@@ -25,10 +25,10 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
-	github.com/mattn/go-runewidth v0.0.23 // indirect
+	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/sahilm/fuzzy v0.1.1 // indirect
+	github.com/sahilm/fuzzy v0.1.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/sync v0.21.0 // indirect
 )
