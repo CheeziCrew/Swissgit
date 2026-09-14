@@ -68,8 +68,8 @@ func (m CleanupModel) Update(msg tea.Msg) (CleanupModel, tea.Cmd) {
 			m.viewport = viewport.New(viewport.WithWidth(msg.Width-6), viewport.WithHeight(msg.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.SetWidth(msg.Width - 6)
-			m.viewport.SetHeight(msg.Height - 10)
+			m.viewport.SetWidth(msg.Width - 6)
+			m.viewport.SetHeight(msg.Height - 10)
 		}
 	default:
 		_ = msg

@@ -145,8 +145,8 @@ func (m BranchesModel) Update(msg tea.Msg) (BranchesModel, tea.Cmd) {
 			m.viewport = viewport.New(viewport.WithWidth(wsm.Width-2), viewport.WithHeight(wsm.Height-8))
 			m.viewReady = true
 		} else {
-			m.viewport.SetWidth(wsm.Width - 2)
-			m.viewport.SetHeight(wsm.Height - 8)
+			m.viewport.SetWidth(wsm.Width - 2)
+			m.viewport.SetHeight(wsm.Height - 8)
 		}
 	}
 

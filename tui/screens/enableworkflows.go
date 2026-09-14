@@ -103,8 +103,8 @@ func (m EnableWorkflowsModel) Update(msg tea.Msg) (EnableWorkflowsModel, tea.Cmd
 			m.viewport = viewport.New(viewport.WithWidth(wsm.Width-6), viewport.WithHeight(wsm.Height-10))
 			m.viewReady = true
 		} else {
-			m.viewport.SetWidth(wsm.Width - 6)
-			m.viewport.SetHeight(wsm.Height - 10)
+			m.viewport.SetWidth(wsm.Width - 6)
+			m.viewport.SetHeight(wsm.Height - 10)
 		}
 	}
 
