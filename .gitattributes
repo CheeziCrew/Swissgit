@@ -1,0 +1,3 @@
+# Normalize line endings: LF in the repo and in the working tree.
+# Binary files are detected and left alone by text=auto.
+* text=auto eol=lf
