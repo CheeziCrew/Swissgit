@@ -313,6 +313,12 @@ func (m MergePRsModel) updateProgress(msg tea.Msg) (MergePRsModel, tea.Cmd) {
 			}
 		}
 
+		// Queue is empty — nothing left to merge, so neither waiting nor
+		// re-fetching can make progress. Go straight to the results.
+		if len(m.prs) == 0 {
+			return m.goToResults()
+		}
+
 		// Cycle target met — wait before next cycle
 		if m.cycleMerged >= m.cycleTarget {
 			return m, m.startWait()
