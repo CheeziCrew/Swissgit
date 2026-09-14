@@ -84,9 +84,11 @@ func TestFetchTeamPRs(t *testing.T) {
 				Repository: struct {
 					Name string `json:"name"`
 				}{Name: "service-one"},
-				Number:    1,
-				Title:     "Fix bug",
-				Author:    struct{ Login string `json:"login"` }{Login: "alice"},
+				Number: 1,
+				Title:  "Fix bug",
+				Author: struct {
+					Login string `json:"login"`
+				}{Login: "alice"},
 				URL:       "https://github.com/myorg/service-one/pull/1",
 				IsDraft:   false,
 				CreatedAt: now,
@@ -95,9 +97,11 @@ func TestFetchTeamPRs(t *testing.T) {
 				Repository: struct {
 					Name string `json:"name"`
 				}{Name: "other-repo"},
-				Number:    2,
-				Title:     "Add feature",
-				Author:    struct{ Login string `json:"login"` }{Login: "bob"},
+				Number: 2,
+				Title:  "Add feature",
+				Author: struct {
+					Login string `json:"login"`
+				}{Login: "bob"},
 				URL:       "https://github.com/myorg/other-repo/pull/2",
 				IsDraft:   true,
 				CreatedAt: now,

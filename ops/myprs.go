@@ -22,10 +22,10 @@ type ghMyPRResult struct {
 		Name          string `json:"name"`
 		NameWithOwner string `json:"nameWithOwner"`
 	} `json:"repository"`
-	Number int    `json:"number"`
-	Title  string `json:"title"`
-	URL    string `json:"url"`
-	State  string `json:"state"`
+	Number    int       `json:"number"`
+	Title     string    `json:"title"`
+	URL       string    `json:"url"`
+	State     string    `json:"state"`
 	IsDraft   bool      `json:"isDraft"`
 	CreatedAt time.Time `json:"createdAt"`
 }

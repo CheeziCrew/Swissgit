@@ -49,21 +49,21 @@ func TestChanges_Total(t *testing.T) {
 
 func TestClassifyStatusLine(t *testing.T) {
 	tests := []struct {
-		name      string
-		x, y      byte
-		wantMod   int
-		wantAdd   int
-		wantDel   int
-		wantUntr  int
+		name     string
+		x, y     byte
+		wantMod  int
+		wantAdd  int
+		wantDel  int
+		wantUntr int
 	}{
 		{"untracked ??", '?', '?', 0, 0, 0, 1},
-		{"modified in worktree", ' ', 'M', 0, 0, 0, 0},   // x=' ', y='M' -> Modified++
-		{"modified in index", 'M', ' ', 0, 0, 0, 0},       // x='M', y=' ' -> Modified++
-		{"added in index", 'A', ' ', 0, 0, 0, 0},           // x='A' -> Added++
-		{"deleted in worktree", ' ', 'D', 0, 0, 0, 0},     // x=' ', y='D' -> Deleted++
-		{"deleted in index", 'D', ' ', 0, 0, 0, 0},         // x='D' -> Deleted++
-		{"renamed in index", 'R', ' ', 0, 0, 0, 0},         // x='R' -> Added++
-		{"copied in index", 'C', ' ', 0, 0, 0, 0},          // x='C' -> Added++
+		{"modified in worktree", ' ', 'M', 0, 0, 0, 0}, // x=' ', y='M' -> Modified++
+		{"modified in index", 'M', ' ', 0, 0, 0, 0},    // x='M', y=' ' -> Modified++
+		{"added in index", 'A', ' ', 0, 0, 0, 0},       // x='A' -> Added++
+		{"deleted in worktree", ' ', 'D', 0, 0, 0, 0},  // x=' ', y='D' -> Deleted++
+		{"deleted in index", 'D', ' ', 0, 0, 0, 0},     // x='D' -> Deleted++
+		{"renamed in index", 'R', ' ', 0, 0, 0, 0},     // x='R' -> Added++
+		{"copied in index", 'C', ' ', 0, 0, 0, 0},      // x='C' -> Added++
 	}
 
 	// The table above isn't fully testing counts because each case is isolated.

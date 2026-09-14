@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"charm.land/lipgloss/v2"
 	"github.com/CheeziCrew/swissgit/git"
 	"github.com/CheeziCrew/swissgit/ops"
-	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 )
 

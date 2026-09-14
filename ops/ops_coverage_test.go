@@ -1763,4 +1763,3 @@ func TestCommitAndPush_PushFails(t *testing.T) {
 		t.Error("expected failure when push fails")
 	}
 }
-

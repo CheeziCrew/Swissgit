@@ -14,7 +14,7 @@ func TestIsBot(t *testing.T) {
 		{"renovate", true},
 		{"alice", false},
 		{"bob", false},
-		{"botman", false},   // doesn't end with [bot] or -bot
+		{"botman", false},    // doesn't end with [bot] or -bot
 		{"[bot]user", false}, // suffix check, not prefix
 		{"my-robot", false},  // doesn't end with -bot
 	}

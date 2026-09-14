@@ -18,19 +18,19 @@ import (
 )
 
 var (
-	tpRepoName   = lipgloss.NewStyle().Foreground(colorBrMag).Bold(true)
-	tpRepoCount  = lipgloss.NewStyle().Foreground(colorMagenta)
-	tpAuthor     = lipgloss.NewStyle().Foreground(colorCyan)
-	tpLink       = lipgloss.NewStyle().Foreground(colorBrBlue).Underline(true)
-	tpDim        = lipgloss.NewStyle().Foreground(colorGray)
-	tpBullet     = lipgloss.NewStyle().Foreground(colorCyan).Render("▸")
-	tpBotBullet  = lipgloss.NewStyle().Foreground(colorGray).Render("▸")
-	tpDot        = lipgloss.NewStyle().Foreground(colorGray).Render("·")
-	tpDraftMark  = "✏️"
-	tpBotMark    = "🤖"
-	tpAgeFresh   = lipgloss.NewStyle().Foreground(colorGray)
-	tpAgeStale   = lipgloss.NewStyle().Foreground(colorYellow)
-	tpAgeOld     = lipgloss.NewStyle().Foreground(colorRed)
+	tpRepoName  = lipgloss.NewStyle().Foreground(colorBrMag).Bold(true)
+	tpRepoCount = lipgloss.NewStyle().Foreground(colorMagenta)
+	tpAuthor    = lipgloss.NewStyle().Foreground(colorCyan)
+	tpLink      = lipgloss.NewStyle().Foreground(colorBrBlue).Underline(true)
+	tpDim       = lipgloss.NewStyle().Foreground(colorGray)
+	tpBullet    = lipgloss.NewStyle().Foreground(colorCyan).Render("▸")
+	tpBotBullet = lipgloss.NewStyle().Foreground(colorGray).Render("▸")
+	tpDot       = lipgloss.NewStyle().Foreground(colorGray).Render("·")
+	tpDraftMark = "✏️"
+	tpBotMark   = "🤖"
+	tpAgeFresh  = lipgloss.NewStyle().Foreground(colorGray)
+	tpAgeStale  = lipgloss.NewStyle().Foreground(colorYellow)
+	tpAgeOld    = lipgloss.NewStyle().Foreground(colorRed)
 )
 
 // formatAge returns a human-readable age string with color based on staleness.

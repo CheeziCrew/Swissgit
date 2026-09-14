@@ -37,8 +37,8 @@ type CommitModel struct {
 	messageInput textinput.Model
 	branchInput  textinput.Model
 
-	message        string
-	branch         string
+	message         string
+	branch          string
 	preselectedRepo string
 
 	history HistoryBrowser

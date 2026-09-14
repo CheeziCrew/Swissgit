@@ -10,14 +10,14 @@ import (
 )
 
 // Helper message constructors
-func escMsg() tea.KeyPressMsg  { return tea.KeyPressMsg{Code: tea.KeyEscape} }
+func escMsg() tea.KeyPressMsg   { return tea.KeyPressMsg{Code: tea.KeyEscape} }
 func enterMsg() tea.KeyPressMsg { return tea.KeyPressMsg{Code: tea.KeyEnter} }
-func upMsg() tea.KeyPressMsg   { return tea.KeyPressMsg{Code: tea.KeyUp} }
-func downMsg() tea.KeyPressMsg { return tea.KeyPressMsg{Code: tea.KeyDown} }
-func tabMsg() tea.KeyPressMsg  { return tea.KeyPressMsg{Code: tea.KeyTab} }
+func upMsg() tea.KeyPressMsg    { return tea.KeyPressMsg{Code: tea.KeyUp} }
+func downMsg() tea.KeyPressMsg  { return tea.KeyPressMsg{Code: tea.KeyDown} }
+func tabMsg() tea.KeyPressMsg   { return tea.KeyPressMsg{Code: tea.KeyTab} }
 func spaceMsg() tea.KeyPressMsg { return tea.KeyPressMsg{Code: tea.KeySpace} }
-func qMsg() tea.KeyPressMsg    { return tea.KeyPressMsg{Code: 'q'} }
-func wsMsg() tea.WindowSizeMsg { return tea.WindowSizeMsg{Width: 120, Height: 40} }
+func qMsg() tea.KeyPressMsg     { return tea.KeyPressMsg{Code: 'q'} }
+func wsMsg() tea.WindowSizeMsg  { return tea.WindowSizeMsg{Width: 120, Height: 40} }
 
 // --- Status ---
 

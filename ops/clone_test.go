@@ -9,10 +9,10 @@ import (
 
 func TestOrgReposURL(t *testing.T) {
 	tests := []struct {
-		name     string
-		org      string
-		team     string
-		wantURL  string
+		name    string
+		org     string
+		team    string
+		wantURL string
 	}{
 		{
 			"org only",
@@ -226,9 +226,9 @@ func TestCloneResult_Fields(t *testing.T) {
 
 func TestCloneFromURL_ParsesNames(t *testing.T) {
 	tests := []struct {
-		name     string
-		url      string
-		wantErr  bool
+		name    string
+		url     string
+		wantErr bool
 	}{
 		{"valid SSH URL", "git@github.com:org/repo.git", false},
 		{"valid HTTPS URL", "https://github.com/org/repo.git", false},

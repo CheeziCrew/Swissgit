@@ -49,8 +49,8 @@ func TestBrowseDown_RestoresTypedValue(t *testing.T) {
 	h := NewHistoryBrowser([]string{"old1", "old2"})
 	input := newTestInput("original")
 
-	h.BrowseUp(&input) // saves "original", shows "old1"
-	h.BrowseUp(&input) // shows "old2"
+	h.BrowseUp(&input)   // saves "original", shows "old1"
+	h.BrowseUp(&input)   // shows "old2"
 	h.BrowseDown(&input) // shows "old1"
 
 	if input.Value() != "old1" {

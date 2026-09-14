@@ -45,7 +45,7 @@ type PullRequestModel struct {
 	changeCursor   int
 	changeSelected map[int]bool
 
-	breaking       bool
+	breaking        bool
 	breakingConfirm curd.ConfirmModel
 
 	history HistoryBrowser

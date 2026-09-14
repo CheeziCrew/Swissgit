@@ -34,17 +34,17 @@ type NavigateMsg struct {
 
 // Model is the root Bubble Tea model that routes to sub-screens.
 type Model struct {
-	current Screen
-	menu    screens.MenuModel
-	width   int
-	height  int
-	history *History
-	pr         screens.PullRequestModel
-	cleanup    screens.CleanupModel
-	commit     screens.CommitModel
-	status     screens.StatusModel
-	branches   screens.BranchesModel
-	clone      screens.CloneModel
+	current         Screen
+	menu            screens.MenuModel
+	width           int
+	height          int
+	history         *History
+	pr              screens.PullRequestModel
+	cleanup         screens.CleanupModel
+	commit          screens.CommitModel
+	status          screens.StatusModel
+	branches        screens.BranchesModel
+	clone           screens.CloneModel
 	automerge       screens.AutomergeModel
 	mergePRs        screens.MergePRsModel
 	enableWorkflows screens.EnableWorkflowsModel

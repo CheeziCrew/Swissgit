@@ -66,8 +66,8 @@ type MergePRsModel struct {
 	// Cycle-level tracking (reset each cycle)
 	cycleMerged      int               // successful merges in current cycle
 	cycleTarget      int               // = batchSize
-	cycleFailed      map[string]string  // "repo #number" -> error message
-	cycleFailedOrder []string           // ordered keys for display
+	cycleFailed      map[string]string // "repo #number" -> error message
+	cycleFailedOrder []string          // ordered keys for display
 	cycleRetry       bool              // true when re-fetching within same cycle
 
 	// Waiting countdown
