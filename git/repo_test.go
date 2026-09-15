@@ -35,11 +35,11 @@ func TestIsGitRepository(t *testing.T) {
 	})
 }
 
-func TestDiscoverRepos(t *testing.T) {
+func TestDiscoverReposWithSkipped(t *testing.T) {
 	root := t.TempDir()
 
 	// Create a real repo dir — an empty .git directory is not openable, and
-	// DiscoverRepos only returns repos it can actually open.
+	// discovery only returns repos it can actually open.
 	repoDir := filepath.Join(root, "my-repo")
 	if err := os.MkdirAll(repoDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -59,9 +59,12 @@ func TestDiscoverRepos(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	repos, err := DiscoverRepos(root)
+	repos, skipped, err := DiscoverReposWithSkipped(root)
 	if err != nil {
-		t.Fatalf("DiscoverRepos() error: %v", err)
+		t.Fatalf("DiscoverReposWithSkipped() error: %v", err)
+	}
+	if len(skipped) != 0 {
+		t.Errorf("nothing here should be skipped, got %v", skipped)
 	}
 
 	if len(repos) != 1 {
@@ -150,7 +153,7 @@ func TestDiscoverRepos_SkipsRatherThanFailing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	repos, err := DiscoverRepos(root)
+	repos, _, err := DiscoverReposWithSkipped(root)
 	if err != nil {
 		t.Fatalf("one unopenable repo must not fail the whole scan: %v", err)
 	}
@@ -161,7 +164,7 @@ func TestDiscoverRepos_SkipsRatherThanFailing(t *testing.T) {
 
 func TestDiscoverRepos_EmptyDir(t *testing.T) {
 	root := t.TempDir()
-	repos, err := DiscoverRepos(root)
+	repos, _, err := DiscoverReposWithSkipped(root)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -171,7 +174,7 @@ func TestDiscoverRepos_EmptyDir(t *testing.T) {
 }
 
 func TestDiscoverRepos_InvalidPath(t *testing.T) {
-	_, err := DiscoverRepos("/nonexistent/path/xyz")
+	_, _, err := DiscoverReposWithSkipped("/nonexistent/path/xyz")
 	if err == nil {
 		t.Error("expected error for nonexistent path")
 	}

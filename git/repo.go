@@ -24,16 +24,11 @@ func IsGitRepository(path string) bool {
 	return err == nil
 }
 
-// DiscoverRepos scans one level of subdirectories for usable git repos.
-// Directories that look like repos but cannot be opened are skipped rather than
-// failing the whole scan — use DiscoverReposWithSkipped to find out why.
-func DiscoverRepos(rootPath string) ([]string, error) {
-	repos, _, err := DiscoverReposWithSkipped(rootPath)
-	return repos, err
-}
-
-// DiscoverReposWithSkipped is DiscoverRepos, but it also reports the repos it
-// had to skip. Callers that can surface a warning should prefer this.
+// DiscoverReposWithSkipped scans one level of subdirectories for usable git
+// repos, and separately reports the ones that look like repos but could not be
+// opened. Skipping beats failing the whole scan, and reporting beats skipping
+// silently: a repo that quietly drops out of the list looks like a repo that is
+// fine.
 func DiscoverReposWithSkipped(rootPath string) ([]string, []SkippedRepo, error) {
 	entries, err := os.ReadDir(rootPath)
 	if err != nil {
