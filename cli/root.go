@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -551,13 +552,23 @@ func teamPRsCLICmd() *cobra.Command {
 
 func resolvePaths(root string, all bool) []string {
 	if all {
-		paths, err := git.DiscoverRepos(root)
+		paths, skipped, err := git.DiscoverReposWithSkipped(root)
 		if err != nil {
 			return []string{root}
 		}
+		warnSkipped(skipped)
 		return paths
 	}
 	return []string{root}
+}
+
+// warnSkipped reports repos that were found but could not be opened, so they
+// do not drop out of an --all run silently. Goes to stderr to keep stdout
+// clean for piping and for --json consumers.
+func warnSkipped(skipped []git.SkippedRepo) {
+	for _, s := range skipped {
+		fmt.Fprintf(os.Stderr, " %s %s %s\n", fail, filepath.Base(s.Path), dim.Render("skipped: "+s.Reason))
+	}
 }
 
 func printResult(name string, success bool, info, errMsg string) {

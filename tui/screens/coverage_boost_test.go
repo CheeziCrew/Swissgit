@@ -3,6 +3,7 @@ package screens
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"charm.land/bubbles/v2/spinner"
@@ -1117,18 +1118,21 @@ func TestGitScan(t *testing.T) {
 	os.MkdirAll(sub, 0755)
 	initTestRepo(t, sub)
 
-	repos, err := gitScan(root)
+	repos, warnings, err := gitScan(root)
 	if err != nil {
 		t.Fatalf("gitScan error: %v", err)
 	}
 	if len(repos) == 0 {
 		t.Error("expected at least one repo")
 	}
+	if len(warnings) != 0 {
+		t.Errorf("a healthy repo produces no warnings, got %v", warnings)
+	}
 }
 
 func TestGitScan_NoRepos(t *testing.T) {
 	dir := t.TempDir()
-	repos, err := gitScan(dir)
+	repos, _, err := gitScan(dir)
 	if err != nil {
 		t.Fatalf("gitScan error: %v", err)
 	}
@@ -1138,9 +1142,50 @@ func TestGitScan_NoRepos(t *testing.T) {
 }
 
 func TestGitScan_InvalidDir(t *testing.T) {
-	_, err := gitScan("/nonexistent/path")
+	_, _, err := gitScan("/nonexistent/path")
 	if err == nil {
 		t.Error("expected error for invalid dir")
+	}
+}
+
+// The repo selector was the last place an unopenable repo vanished without a
+// word. Same fixture as TestDiscoverReposWithSkipped_DanglingWorktreeConfigExplained.
+func TestGitScan_SkippedRepoBecomesWarning(t *testing.T) {
+	root := t.TempDir()
+
+	good := filepath.Join(root, "good-repo")
+	os.MkdirAll(good, 0o755)
+	initTestRepo(t, good)
+
+	poisoned := filepath.Join(root, "poisoned-repo")
+	os.MkdirAll(poisoned, 0o755)
+	initTestRepo(t, poisoned)
+	cfg := filepath.Join(poisoned, ".git", "config")
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, append(data, []byte("[extensions]\n\tworktreeConfig = true\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	repos, warnings, err := gitScan(root)
+	if err != nil {
+		t.Fatalf("one poisoned repo must not fail the scan: %v", err)
+	}
+	for _, r := range repos {
+		if filepath.Base(r.Path) == "poisoned-repo" {
+			t.Error("poisoned repo must not be selectable")
+		}
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d: %v", len(warnings), warnings)
+	}
+	if !strings.Contains(warnings[0], "poisoned-repo") {
+		t.Errorf("warning must name the repo, got %q", warnings[0])
+	}
+	if !strings.Contains(warnings[0], "extensions.worktreeConfig") {
+		t.Errorf("warning must carry the reason, got %q", warnings[0])
 	}
 }
 

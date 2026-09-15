@@ -37,6 +37,7 @@ type AutomergeModel struct {
 	results   components.ResultModel
 	repos     []string
 	throttle  *taskThrottle
+	skipped   []git.SkippedRepo
 	height    int
 	viewport  viewport.Model
 	viewReady bool
@@ -102,12 +103,13 @@ func (m AutomergeModel) updateTarget(msg tea.Msg) (AutomergeModel, tea.Cmd) {
 }
 
 func (m *AutomergeModel) startAutomergeTasks() tea.Cmd {
-	paths, err := git.DiscoverRepos(".")
+	paths, skipped, err := git.DiscoverReposWithSkipped(".")
 	if err != nil || len(paths) == 0 {
 		// Nothing to do — go back
 		return func() tea.Msg { return BackToMenuMsg{} }
 	}
 	m.repos = paths
+	m.skipped = skipped
 
 	var tasks []components.RepoTask
 	for _, p := range m.repos {
@@ -212,6 +214,7 @@ func (m AutomergeModel) View() string {
 		s += m.progress.View()
 
 	case automergeStepResults:
+		s += renderSkippedWarning(m.skipped)
 		if m.viewReady {
 			s += m.viewport.View() + "\n"
 		} else {

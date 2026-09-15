@@ -5,33 +5,78 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	gogit "github.com/go-git/go-git/v5"
 )
 
-// IsGitRepository checks if a directory contains a .git folder.
+// SkippedRepo records a directory that looks like a git repo but could not be
+// opened, together with a human-readable reason (and a fix, when we know one).
+type SkippedRepo struct {
+	Path   string
+	Reason string
+}
+
+// IsGitRepository checks if a directory contains a .git entry. That entry is a
+// directory for a normal clone and a file for a linked worktree; both count.
 func IsGitRepository(path string) bool {
 	_, err := os.Stat(filepath.Join(path, ".git"))
 	return err == nil
 }
 
-// DiscoverRepos scans one level of subdirectories for git repos.
+// DiscoverRepos scans one level of subdirectories for usable git repos.
+// Directories that look like repos but cannot be opened are skipped rather than
+// failing the whole scan — use DiscoverReposWithSkipped to find out why.
 func DiscoverRepos(rootPath string) ([]string, error) {
+	repos, _, err := DiscoverReposWithSkipped(rootPath)
+	return repos, err
+}
+
+// DiscoverReposWithSkipped is DiscoverRepos, but it also reports the repos it
+// had to skip. Callers that can surface a warning should prefer this.
+func DiscoverReposWithSkipped(rootPath string) ([]string, []SkippedRepo, error) {
 	entries, err := os.ReadDir(rootPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read directory: %w", err)
+		return nil, nil, fmt.Errorf("failed to read directory: %w", err)
 	}
 
 	var repos []string
+	var skipped []SkippedRepo
 	for _, entry := range entries {
-		if entry.IsDir() {
-			sub := filepath.Join(rootPath, entry.Name())
-			if IsGitRepository(sub) {
-				repos = append(repos, sub)
-			}
+		if !entry.IsDir() {
+			continue
 		}
+		sub := filepath.Join(rootPath, entry.Name())
+		if !IsGitRepository(sub) {
+			continue
+		}
+		if _, err := gogit.PlainOpen(sub); err != nil {
+			skipped = append(skipped, SkippedRepo{Path: sub, Reason: explainOpenFailure(sub, err)})
+			continue
+		}
+		repos = append(repos, sub)
 	}
-	return repos, nil
+	return repos, skipped, nil
+}
+
+// explainOpenFailure turns a go-git open error into something actionable. The
+// common case in practice is a dangling extensions.worktreeConfig: some git
+// subcommands set that key without bumping core.repositoryformatversion, and
+// removing the worktree never cleans it up. C git tolerates the mismatch;
+// go-git refuses to open the repository at all.
+func explainOpenFailure(path string, err error) string {
+	if hasDanglingWorktreeConfig(path) {
+		return fmt.Sprintf("%v — dangling extensions.worktreeConfig; repair with: git -C %s config --local --unset extensions.worktreeConfig", err, path)
+	}
+	return err.Error()
+}
+
+func hasDanglingWorktreeConfig(path string) bool {
+	data, err := os.ReadFile(filepath.Join(path, ".git", "config"))
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(data)), "worktreeconfig")
 }
 
 // GetBranchName returns the current branch name for a repo.

@@ -69,7 +69,8 @@ type branchesTaskDoneMsg struct {
 }
 
 type branchesReposDiscoveredMsg struct {
-	paths []string
+	paths   []string
+	skipped []git.SkippedRepo
 }
 
 // BranchesModel handles the branches view.
@@ -81,6 +82,7 @@ type BranchesModel struct {
 	viewport  viewport.Model
 	viewReady bool
 	confirm   curd.ConfirmModel
+	skipped   []git.SkippedRepo
 	width     int
 	height    int
 }
@@ -97,11 +99,11 @@ func (m BranchesModel) Init() tea.Cmd {
 
 func discoverForBranches() tea.Cmd {
 	return func() tea.Msg {
-		paths, err := git.DiscoverRepos(".")
+		paths, skipped, err := git.DiscoverReposWithSkipped(".")
 		if err != nil {
 			return branchesReposDiscoveredMsg{}
 		}
-		return branchesReposDiscoveredMsg{paths: paths}
+		return branchesReposDiscoveredMsg{paths: paths, skipped: skipped}
 	}
 }
 
@@ -164,6 +166,7 @@ func (m BranchesModel) Update(msg tea.Msg) (BranchesModel, tea.Cmd) {
 func (m BranchesModel) updateProgress(msg tea.Msg) (BranchesModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case branchesReposDiscoveredMsg:
+		m.skipped = msg.skipped
 		if len(msg.paths) == 0 {
 			m.step = branchesStepResults
 			m.viewport.SetContent(m.renderResults())
@@ -406,6 +409,8 @@ func renderBranchErrors(errored []ops.BranchesResult, boxW int) string {
 }
 
 func (m BranchesModel) renderResults() string {
+	warning := renderSkippedWarning(m.skipped)
+
 	sorted := make([]ops.BranchesResult, len(m.results))
 	copy(sorted, m.results)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -413,7 +418,7 @@ func (m BranchesModel) renderResults() string {
 	})
 
 	if len(sorted) == 0 {
-		return prDimStyle.Render("No git repositories found.")
+		return warning + prDimStyle.Render("No git repositories found.")
 	}
 
 	var interesting, clean, errored []ops.BranchesResult
@@ -459,7 +464,7 @@ func (m BranchesModel) renderResults() string {
 		s += brCleanBox.MaxWidth(boxW).Render(strings.TrimRight(content, "\n")) + "\n"
 	}
 
-	return s
+	return warning + s
 }
 
 func (m BranchesModel) View() string {

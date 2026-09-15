@@ -21,15 +21,24 @@ func NewRepoSelectModel(caller, rootPath string, parentOffset, termHeight int) c
 		Caller:       caller,
 		ParentOffset: parentOffset,
 		TermHeight:   termHeight,
-		Scanner:      gitScan,
+		// ScannerWithWarnings, not Scanner: a repo that cannot be opened must
+		// be named, not silently dropped from the list.
+		ScannerWithWarnings: gitScan,
 	})
 }
 
-// gitScan discovers git repos and collects their status.
-func gitScan(rootPath string) ([]curd.RepoInfo, error) {
-	paths, err := git.DiscoverRepos(rootPath)
+// gitScan discovers git repos and collects their status, reporting any it
+// could not open rather than dropping them. Wording matches
+// renderSkippedWarning so the same repo reads the same everywhere.
+func gitScan(rootPath string) ([]curd.RepoInfo, []string, error) {
+	paths, skipped, err := git.DiscoverReposWithSkipped(rootPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	warnings := make([]string, 0, len(skipped))
+	for _, s := range skipped {
+		warnings = append(warnings, filepath.Base(s.Path)+" — "+s.Reason)
 	}
 
 	var repos []curd.RepoInfo
@@ -61,7 +70,7 @@ func gitScan(rootPath string) ([]curd.RepoInfo, error) {
 		return repos[i].Name < repos[j].Name
 	})
 
-	return repos, nil
+	return repos, warnings, nil
 }
 
 func getBranchShell(repoPath string) string {

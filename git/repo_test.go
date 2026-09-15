@@ -4,7 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
+
+	gogit "github.com/go-git/go-git/v5"
 )
 
 func TestIsGitRepository(t *testing.T) {
@@ -35,9 +38,13 @@ func TestIsGitRepository(t *testing.T) {
 func TestDiscoverRepos(t *testing.T) {
 	root := t.TempDir()
 
-	// Create a repo dir (has .git)
+	// Create a real repo dir — an empty .git directory is not openable, and
+	// DiscoverRepos only returns repos it can actually open.
 	repoDir := filepath.Join(root, "my-repo")
-	if err := os.MkdirAll(filepath.Join(repoDir, ".git"), 0o755); err != nil {
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gogit.PlainInit(repoDir, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -62,6 +69,93 @@ func TestDiscoverRepos(t *testing.T) {
 	}
 	if repos[0] != repoDir {
 		t.Errorf("expected %s, got %s", repoDir, repos[0])
+	}
+}
+
+func TestDiscoverReposWithSkipped_UnopenableRepoIsSkipped(t *testing.T) {
+	root := t.TempDir()
+
+	good := filepath.Join(root, "good-repo")
+	if err := os.MkdirAll(good, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gogit.PlainInit(good, false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Looks like a repo (has .git) but cannot be opened.
+	broken := filepath.Join(root, "broken-repo")
+	if err := os.MkdirAll(filepath.Join(broken, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	repos, skipped, err := DiscoverReposWithSkipped(root)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(repos) != 1 || repos[0] != good {
+		t.Fatalf("expected only %s, got %v", good, repos)
+	}
+	if len(skipped) != 1 || skipped[0].Path != broken {
+		t.Fatalf("expected %s to be skipped, got %v", broken, skipped)
+	}
+	if skipped[0].Reason == "" {
+		t.Error("expected a non-empty reason for the skipped repo")
+	}
+}
+
+func TestDiscoverReposWithSkipped_DanglingWorktreeConfigExplained(t *testing.T) {
+	root := t.TempDir()
+
+	poisoned := filepath.Join(root, "poisoned-repo")
+	if err := os.MkdirAll(poisoned, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gogit.PlainInit(poisoned, false); err != nil {
+		t.Fatal(err)
+	}
+	// Reproduce the real-world damage: the extension is set, but the
+	// repository format version is left at 0.
+	cfg := filepath.Join(poisoned, ".git", "config")
+	data, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, append(data, []byte("[extensions]\n\tworktreeConfig = true\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	repos, skipped, err := DiscoverReposWithSkipped(root)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(repos) != 0 {
+		t.Fatalf("expected the poisoned repo to be skipped, got %v", repos)
+	}
+	if len(skipped) != 1 {
+		t.Fatalf("expected 1 skipped repo, got %d", len(skipped))
+	}
+	if !strings.Contains(skipped[0].Reason, "extensions.worktreeConfig") {
+		t.Errorf("reason should name the dangling extension, got: %s", skipped[0].Reason)
+	}
+	if !strings.Contains(skipped[0].Reason, "--unset") {
+		t.Errorf("reason should include the repair command, got: %s", skipped[0].Reason)
+	}
+}
+
+func TestDiscoverRepos_SkipsRatherThanFailing(t *testing.T) {
+	root := t.TempDir()
+	broken := filepath.Join(root, "broken-repo")
+	if err := os.MkdirAll(filepath.Join(broken, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	repos, err := DiscoverRepos(root)
+	if err != nil {
+		t.Fatalf("one unopenable repo must not fail the whole scan: %v", err)
+	}
+	if len(repos) != 0 {
+		t.Errorf("expected 0 usable repos, got %v", repos)
 	}
 }
 

@@ -70,7 +70,8 @@ type statusTaskDoneMsg struct {
 }
 
 type statusReposDiscoveredMsg struct {
-	paths []string
+	paths   []string
+	skipped []git.SkippedRepo
 }
 
 type statusDiffMsg struct {
@@ -94,6 +95,7 @@ type StatusModel struct {
 	diffView   viewport.Model
 	viewport   viewport.Model
 	viewReady  bool
+	skipped    []git.SkippedRepo
 	width      int
 	height     int
 }
@@ -110,11 +112,11 @@ func (m StatusModel) Init() tea.Cmd {
 
 func discoverForStatus() tea.Cmd {
 	return func() tea.Msg {
-		paths, err := git.DiscoverRepos(".")
+		paths, skipped, err := git.DiscoverReposWithSkipped(".")
 		if err != nil {
 			return statusReposDiscoveredMsg{}
 		}
-		return statusReposDiscoveredMsg{paths: paths}
+		return statusReposDiscoveredMsg{paths: paths, skipped: skipped}
 	}
 }
 
@@ -180,6 +182,7 @@ func (m StatusModel) Update(msg tea.Msg) (StatusModel, tea.Cmd) {
 func (m StatusModel) updateProgress(msg tea.Msg) (StatusModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case statusReposDiscoveredMsg:
+		m.skipped = msg.skipped
 		if len(msg.paths) == 0 {
 			m.step = statusStepResults
 			m.viewport.SetContent(m.renderResults())
@@ -400,6 +403,8 @@ func isDirtyRepo(r ops.StatusResult) bool {
 }
 
 func (m StatusModel) renderResults() string {
+	warning := renderSkippedWarning(m.skipped)
+
 	sorted := make([]ops.StatusResult, len(m.results))
 	copy(sorted, m.results)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -407,7 +412,7 @@ func (m StatusModel) renderResults() string {
 	})
 
 	if len(sorted) == 0 {
-		return prDimStyle.Render("No git repositories found.")
+		return warning + prDimStyle.Render("No git repositories found.")
 	}
 
 	var dirty, clean, errored []ops.StatusResult
@@ -443,7 +448,7 @@ func (m StatusModel) renderResults() string {
 		s += stCleanBox.Render(strings.TrimRight(content, "\n")) + "\n"
 	}
 
-	return s
+	return warning + s
 }
 
 func (m StatusModel) View() string {
