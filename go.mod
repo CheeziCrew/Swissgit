@@ -1,10 +1,10 @@
 module github.com/CheeziCrew/swissgit
 
-go 1.25.0
+go 1.26.0
 
 require (
 	charm.land/bubbles/v2 v2.2.1
-	charm.land/bubbletea/v2 v2.0.9
+	charm.land/bubbletea/v2 v2.0.10
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/CheeziCrew/curd v0.2.23
 	github.com/go-git/go-git/v5 v5.19.2
